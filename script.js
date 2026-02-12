@@ -485,8 +485,12 @@ async function loadInitialData() {
       
       console.log('✅ PAYMENT_METHODS установлен:', PAYMENT_METHODS);
       
-      await saveProductsToLocal(products);
-      await savePaymentMethodsToLocal(methods);
+       try {
+  await saveProductsToLocal(products);
+  await savePaymentMethodsToLocal(methods);
+} catch (e) {
+  console.warn('⚠️ Ошибка кеша, продолжаем online:', e);
+}
       
       // Грузим поставщиков для дропдауна (тихо, не блокируем)
       try {
