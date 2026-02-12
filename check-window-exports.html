@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Проверка Window Exports</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #1a1a1a;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+    }
+    .result {
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    .success {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+    }
+    .error {
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+    }
+    .warning {
+      background: #fff3cd;
+      border: 1px solid #ffeaa7;
+      color: #856404;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    th {
+      background: #f8f9fa;
+      font-weight: 600;
+      color: #495057;
+    }
+    .status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .status.ok {
+      background: #d4edda;
+      color: #155724;
+    }
+    .status.missing {
+      background: #f8d7da;
+      color: #721c24;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin: 30px 0;
+    }
+    .stat-card {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 36px;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+    .stat-label {
+      color: #666;
+      font-size: 14px;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 Проверка Window Exports</h1>
+    <p class="subtitle">Автоматическая проверка экспорта всех функций из HTML в window</p>
+    
+    <button onclick="runCheck()">Запустить проверку</button>
+    
+    <div id="results"></div>
+  </div>
+
+  <script>
+    // Список всех функций, которые должны быть доступны через window
+    const REQUIRED_FUNCTIONS = [
+      'onClientSelect',
+      'changeExpensePeriod',
+      'changeIncomePeriod',
+      'changeMoneyPeriod',
+      'changePeriod',
+      'changeReturnPeriod',
+      'changeSupplierReturnPeriod',
+      'changeTradingPeriod',
+      'changeWriteoffPeriod',
+      'closeModal',
+      'logout',
+      'openAddNewProductIncome',
+      'openNewClient',
+      'openNewClientModal',
+      'openNewExpense',
+      'openNewProduct',
+      'openNewSupplier',
+      'saveNewClient',
+      'saveNewExpense',
+      'saveNewProduct',
+      'saveNewSupplier',
+      'showSection',
+      'submitOperation',
+      'switchTradingTab',
+      'calculateDiscount',
+      'calculateDiscountReverse',
+      'filterClients',
+      'filterProductsTable',
+      'filterSuppliers'
+    ];
+
+    function runCheck() {
+      const working = [];
+      const missing = [];
+
+      REQUIRED_FUNCTIONS.forEach(fn => {
+        if (typeof window[fn] === 'function') {
+          working.push(fn);
+        } else {
+          missing.push(fn);
+        }
+      });
+
+      const total = REQUIRED_FUNCTIONS.length;
+      const workingCount = working.length;
+      const missingCount = missing.length;
+      const percentage = Math.round((workingCount / total) * 100);
+
+      let html = '';
+
+      // Статистика
+      html += `
+        <div class="stats">
+          <div class="stat-card">
+            <div class="stat-value" style="color: #28a745;">${workingCount}</div>
+            <div class="stat-label">Работает</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" style="color: #dc3545;">${missingCount}</div>
+            <div class="stat-label">Отсутствует</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" style="color: #007bff;">${percentage}%</div>
+            <div class="stat-label">Готовность</div>
+          </div>
+        </div>
+      `;
+
+      // Общий результат
+      if (missingCount === 0) {
+        html += `
+          <div class="result success">
+            <h2>✅ Отлично! Все функции экспортированы</h2>
+            <p>Все ${total} функций доступны через window и могут быть вызваны из HTML.</p>
+          </div>
+        `;
+      } else if (missingCount < 5) {
+        html += `
+          <div class="result warning">
+            <h2>⚠️ Почти готово</h2>
+            <p>Работает ${workingCount} из ${total} функций. Осталось добавить ${missingCount}.</p>
+          </div>
+        `;
+      } else {
+        html += `
+          <div class="result error">
+            <h2>❌ Требуются исправления</h2>
+            <p>Работает только ${workingCount} из ${total} функций. Отсутствует ${missingCount}.</p>
+          </div>
+        `;
+      }
+
+      // Таблица с деталями
+      html += `
+        <h3>Детальная информация</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Функция</th>
+              <th>Статус</th>
+              <th>Тип</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      REQUIRED_FUNCTIONS.sort().forEach(fn => {
+        const exists = working.includes(fn);
+        const type = typeof window[fn];
+        html += `
+          <tr>
+            <td><code>${fn}</code></td>
+            <td>
+              <span class="status ${exists ? 'ok' : 'missing'}">
+                ${exists ? '✓ Доступна' : '✗ Отсутствует'}
+              </span>
+            </td>
+            <td><code>${type}</code></td>
+          </tr>
+        `;
+      });
+
+      html += `
+          </tbody>
+        </table>
+      `;
+
+      // Консольный вывод для отладки
+      console.group('🔍 Проверка Window Exports');
+      console.log(`Работает: ${workingCount}/${total} (${percentage}%)`);
+      console.log('✅ Работающие функции:', working);
+      if (missing.length > 0) {
+        console.error('❌ Отсутствующие функции:', missing);
+      }
+      console.groupEnd();
+
+      document.getElementById('results').innerHTML = html;
+    }
+
+    // Автоматический запуск при загрузке
+    window.addEventListener('load', () => {
+      setTimeout(runCheck, 500);
+    });
+  </script>
+</body>
+</html>

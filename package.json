@@ -1,0 +1,17 @@
+{
+  "name": "pos-kassir-modern",
+  "version": "1.0.0",
+  "description": "POS система с оффлайн поддержкой",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4"
+  },
+  "devDependencies": {
+    "vite": "^5.4.11"
+  }
+}

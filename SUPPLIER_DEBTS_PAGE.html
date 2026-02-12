@@ -1,0 +1,610 @@
+<!-- =====================================================
+     СТРАНИЦА УПРАВЛЕНИЯ ДОЛГАМИ ПОСТАВЩИКОВ
+     Вставить как новую секцию в index.html
+     ===================================================== -->
+
+<!-- Секция "Долги поставщикам" -->
+<div id="section-supplier-debts" class="section" style="display: none;">
+  <div class="content-wrapper">
+    
+    <!-- Заголовок и сводка -->
+    <div class="section-header" style="margin-bottom: 24px;">
+      <div>
+        <h2 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: #111827;">
+          Долги поставщикам
+        </h2>
+        <p style="margin: 0; color: #6b7280; font-size: 14px;">
+          Учёт задолженностей и история оплат
+        </p>
+      </div>
+      
+      <!-- Кнопка обновления -->
+      <button 
+        onclick="window.loadDebtsPage()" 
+        class="btn-primary"
+        style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;"
+      >
+        🔄 Обновить
+      </button>
+    </div>
+
+    <!-- Сводка по долгам -->
+    <div id="debtsSummary" class="debts-summary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+      <!-- Заполняется динамически -->
+    </div>
+
+    <!-- Фильтры -->
+    <div class="debts-filters" style="margin-bottom: 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+      
+      <div style="flex: 1; min-width: 200px;">
+        <select 
+          id="debtsStatusFilter" 
+          onchange="window.filterDebts()"
+          class="input-style"
+          style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;"
+        >
+          <option value="all">Все долги</option>
+          <option value="open" selected>Не оплачены</option>
+          <option value="partial">Частично оплачены</option>
+          <option value="closed">Закрытые</option>
+        </select>
+      </div>
+
+      <div style="flex: 2; min-width: 250px;">
+        <input 
+          type="text" 
+          id="debtsSearchInput" 
+          placeholder="Поиск по поставщику..."
+          oninput="window.filterDebts()"
+          class="input-style"
+          style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;"
+        >
+      </div>
+
+    </div>
+
+    <!-- Таблица долгов -->
+    <div class="debts-table-wrapper" style="background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+      <table class="debts-table" style="width: 100%; border-collapse: collapse;">
+        <thead style="background: #f9fafb; border-bottom: 1px solid #e5e7eb;">
+          <tr>
+            <th style="padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase;">Дата</th>
+            <th style="padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase;">Поставщик</th>
+            <th style="padding: 12px 16px; text-align: right; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase;">Сумма</th>
+            <th style="padding: 12px 16px; text-align: right; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase;">Оплачено</th>
+            <th style="padding: 12px 16px; text-align: right; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase;">Долг</th>
+            <th style="padding: 12px 16px; text-align: center; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase;">Статус</th>
+            <th style="padding: 12px 16px; text-align: center; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase;">Действия</th>
+          </tr>
+        </thead>
+        <tbody id="debtsTableBody">
+          <tr>
+            <td colspan="7" style="padding: 40px; text-align: center; color: #9ca3af;">
+              Загрузка...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===================================================== -->
+<!-- МОДАЛЬНОЕ ОКНО: ОПЛАТА ДОЛГА -->
+<!-- ===================================================== -->
+
+<div id="modalPayDebt" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+  <div class="modal-content" style="background: white; border-radius: 12px; padding: 24px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
+    
+    <!-- Заголовок -->
+    <div class="modal-header" style="margin-bottom: 20px; border-bottom: 1px solid #e5e7eb; padding-bottom: 16px;">
+      <h3 style="margin: 0; font-size: 20px; font-weight: 600; color: #111827;">
+        Оплата долга
+      </h3>
+      <button 
+        onclick="window.closeModal('modalPayDebt')" 
+        style="position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 24px; color: #9ca3af; cursor: pointer;"
+      >
+        ×
+      </button>
+    </div>
+
+    <!-- Информация о долге -->
+    <div id="payDebtInfo" class="debt-info" style="margin-bottom: 20px; padding: 16px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
+      <!-- Заполняется динамически -->
+    </div>
+
+    <!-- Форма оплаты -->
+    <form id="payDebtForm" onsubmit="window.submitPayment(event)">
+      
+      <!-- Сумма оплаты -->
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: #374151;">
+          Сумма оплаты <span style="color: #ef4444;">*</span>
+        </label>
+        <input 
+          type="number" 
+          id="payDebtAmount" 
+          name="amount"
+          min="0.01"
+          step="0.01"
+          required
+          class="input-style"
+          style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;"
+          placeholder="Введите сумму"
+        >
+        <div style="margin-top: 6px; font-size: 12px; color: #6b7280;">
+          Максимум: <span id="payDebtMaxAmount">0.00</span> ₸
+        </div>
+      </div>
+
+      <!-- Способ оплаты -->
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: #374151;">
+          Способ оплаты <span style="color: #ef4444;">*</span>
+        </label>
+        <select 
+          id="payDebtMethod" 
+          name="paymentMethod"
+          required
+          class="input-style"
+          style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;"
+        >
+          <!-- Заполняется из PAYMENT_METHODS -->
+        </select>
+      </div>
+
+      <!-- Комментарий -->
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: #374151;">
+          Комментарий
+        </label>
+        <textarea 
+          id="payDebtComment" 
+          name="comment"
+          rows="3"
+          class="input-style"
+          style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; resize: vertical;"
+          placeholder="Дополнительная информация (необязательно)"
+        ></textarea>
+      </div>
+
+      <!-- Кнопки -->
+      <div style="display: flex; gap: 12px; justify-content: flex-end;">
+        <button 
+          type="button"
+          onclick="window.closeModal('modalPayDebt')"
+          class="btn-secondary"
+          style="padding: 10px 20px; background: #f3f4f6; color: #374151; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;"
+        >
+          Отмена
+        </button>
+        <button 
+          type="submit"
+          class="btn-primary"
+          style="padding: 10px 20px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;"
+        >
+          💰 Оплатить
+        </button>
+      </div>
+
+    </form>
+
+  </div>
+</div>
+
+<!-- ===================================================== -->
+<!-- МОДАЛЬНОЕ ОКНО: ИСТОРИЯ ОПЛАТ -->
+<!-- ===================================================== -->
+
+<div id="modalPaymentHistory" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+  <div class="modal-content" style="background: white; border-radius: 12px; padding: 24px; max-width: 700px; width: 90%; max-height: 90vh; overflow-y: auto;">
+    
+    <!-- Заголовок -->
+    <div class="modal-header" style="margin-bottom: 20px; border-bottom: 1px solid #e5e7eb; padding-bottom: 16px;">
+      <h3 style="margin: 0; font-size: 20px; font-weight: 600; color: #111827;">
+        История оплат
+      </h3>
+      <button 
+        onclick="window.closeModal('modalPaymentHistory')" 
+        style="position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 24px; color: #9ca3af; cursor: pointer;"
+      >
+        ×
+      </button>
+    </div>
+
+    <!-- Информация о долге -->
+    <div id="historyDebtInfo" class="debt-info" style="margin-bottom: 20px; padding: 16px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
+      <!-- Заполняется динамически -->
+    </div>
+
+    <!-- Список оплат -->
+    <div id="paymentHistoryList" class="payment-history-list">
+      <!-- Заполняется динамически -->
+    </div>
+
+  </div>
+</div>
+
+<!-- ===================================================== -->
+<!-- СКРИПТ УПРАВЛЕНИЯ ДОЛГАМИ -->
+<!-- ===================================================== -->
+
+<script type="module">
+import { 
+  loadSupplierDebts, 
+  loadDebtWithPayments,
+  getDebtsSummary,
+  paySupplierDebt,
+  getPaymentHistory,
+  getDebtStatusColor,
+  getDebtStatusText,
+  validatePayment 
+} from './supplier-debts.js';
+
+let currentDebts = [];
+let selectedDebt = null;
+
+// =============================================
+// ЗАГРУЗКА СТРАНИЦЫ ДОЛГОВ
+// =============================================
+
+window.loadDebtsPage = async function() {
+  try {
+    // Загружаем сводку
+    const summary = await getDebtsSummary(window.COMPANY_ID);
+    renderDebtsSummary(summary);
+
+    // Загружаем долги (по умолчанию - открытые)
+    const status = document.getElementById('debtsStatusFilter')?.value || 'open';
+    const debts = await loadSupplierDebts(window.COMPANY_ID, status);
+    currentDebts = debts;
+    renderDebtsTable(debts);
+
+  } catch (error) {
+    console.error('Ошибка загрузки долгов:', error);
+    window.showToast('Ошибка загрузки данных', 'error');
+  }
+};
+
+// =============================================
+// ОТРИСОВКА СВОДКИ
+// =============================================
+
+function renderDebtsSummary(summary) {
+  const container = document.getElementById('debtsSummary');
+  if (!container) return;
+
+  container.innerHTML = `
+    <!-- Всего долгов -->
+    <div class="summary-card" style="padding: 16px; background: white; border-radius: 8px; border: 1px solid #e5e7eb;">
+      <div style="font-size: 13px; color: #6b7280; margin-bottom: 8px;">Всего документов</div>
+      <div style="font-size: 24px; font-weight: 700; color: #111827; margin-bottom: 4px;">${summary.total.count}</div>
+      <div style="font-size: 14px; color: #6b7280;">
+        Сумма: ${summary.total.amount.toFixed(2)} ₸
+      </div>
+    </div>
+
+    <!-- Открытые долги -->
+    <div class="summary-card" style="padding: 16px; background: white; border-radius: 8px; border: 1px solid #fee2e2; border-left: 4px solid #ef4444;">
+      <div style="font-size: 13px; color: #991b1b; margin-bottom: 8px;">Не оплачены</div>
+      <div style="font-size: 24px; font-weight: 700; color: #ef4444; margin-bottom: 4px;">${summary.open.count}</div>
+      <div style="font-size: 14px; color: #991b1b;">
+        Долг: ${summary.open.debt.toFixed(2)} ₸
+      </div>
+    </div>
+
+    <!-- Частично оплачены -->
+    <div class="summary-card" style="padding: 16px; background: white; border-radius: 8px; border: 1px solid #fed7aa; border-left: 4px solid #f59e0b;">
+      <div style="font-size: 13px; color: #92400e; margin-bottom: 8px;">Частично</div>
+      <div style="font-size: 24px; font-weight: 700; color: #f59e0b; margin-bottom: 4px;">${summary.partial.count}</div>
+      <div style="font-size: 14px; color: #92400e;">
+        Долг: ${summary.partial.debt.toFixed(2)} ₸
+      </div>
+    </div>
+
+    <!-- Оплачены -->
+    <div class="summary-card" style="padding: 16px; background: white; border-radius: 8px; border: 1px solid #d1fae5; border-left: 4px solid #10b981;">
+      <div style="font-size: 13px; color: #065f46; margin-bottom: 8px;">Оплачены</div>
+      <div style="font-size: 24px; font-weight: 700; color: #10b981; margin-bottom: 4px;">${summary.closed.count}</div>
+      <div style="font-size: 14px; color: #065f46;">
+        Всё оплачено
+      </div>
+    </div>
+  `;
+}
+
+// =============================================
+// ОТРИСОВКА ТАБЛИЦЫ ДОЛГОВ
+// =============================================
+
+function renderDebtsTable(debts) {
+  const tbody = document.getElementById('debtsTableBody');
+  if (!tbody) return;
+
+  if (!debts || debts.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" style="padding: 40px; text-align: center; color: #9ca3af;">
+          Долги не найдены
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = debts.map(debt => {
+    const date = window.formatDate(debt.created_at);
+    const statusColor = getDebtStatusColor(debt.status);
+    const statusText = getDebtStatusText(debt.status);
+    const supplierName = debt.supplier?.name || debt.supplier_name || 'Не указан';
+
+    return `
+      <tr style="border-bottom: 1px solid #e5e7eb;">
+        <td style="padding: 12px 16px; color: #374151; font-size: 14px;">${date}</td>
+        <td style="padding: 12px 16px; color: #111827; font-size: 14px; font-weight: 500;">${supplierName}</td>
+        <td style="padding: 12px 16px; text-align: right; color: #374151; font-size: 14px;">${Number(debt.total_amount).toFixed(2)} ₸</td>
+        <td style="padding: 12px 16px; text-align: right; color: #10b981; font-size: 14px; font-weight: 500;">${Number(debt.paid_amount).toFixed(2)} ₸</td>
+        <td style="padding: 12px 16px; text-align: right; color: #ef4444; font-size: 14px; font-weight: 600;">${Number(debt.debt_amount).toFixed(2)} ₸</td>
+        <td style="padding: 12px 16px; text-align: center;">
+          <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 500; background: ${statusColor}22; color: ${statusColor};">
+            ${statusText}
+          </span>
+        </td>
+        <td style="padding: 12px 16px; text-align: center;">
+          ${debt.status !== 'closed' ? `
+            <button 
+              onclick="window.openPayDebtModal('${debt.id}')"
+              style="padding: 6px 12px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; margin-right: 6px;"
+            >
+              💰 Оплатить
+            </button>
+          ` : ''}
+          <button 
+            onclick="window.showPaymentHistory('${debt.id}')"
+            style="padding: 6px 12px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;"
+          >
+            📋 История
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// =============================================
+// ФИЛЬТРАЦИЯ ДОЛГОВ
+// =============================================
+
+window.filterDebts = async function() {
+  const status = document.getElementById('debtsStatusFilter')?.value || 'all';
+  const search = document.getElementById('debtsSearchInput')?.value.toLowerCase() || '';
+
+  try {
+    const debts = await loadSupplierDebts(window.COMPANY_ID, status);
+    
+    // Фильтруем по поиску
+    const filtered = search 
+      ? debts.filter(debt => {
+          const supplierName = (debt.supplier?.name || debt.supplier_name || '').toLowerCase();
+          return supplierName.includes(search);
+        })
+      : debts;
+
+    currentDebts = filtered;
+    renderDebtsTable(filtered);
+
+  } catch (error) {
+    console.error('Ошибка фильтрации:', error);
+    window.showToast('Ошибка фильтрации данных', 'error');
+  }
+};
+
+// =============================================
+// ОТКРЫТИЕ МОДАЛЬНОГО ОКНА ОПЛАТЫ
+// =============================================
+
+window.openPayDebtModal = async function(debtId) {
+  try {
+    const debt = await loadDebtWithPayments(debtId);
+    selectedDebt = debt;
+
+    // Заполняем информацию о долге
+    const infoContainer = document.getElementById('payDebtInfo');
+    if (infoContainer) {
+      infoContainer.innerHTML = `
+        <div style="margin-bottom: 8px;">
+          <strong>Поставщик:</strong> ${debt.supplier?.name || debt.supplier_name}
+        </div>
+        <div style="margin-bottom: 8px;">
+          <strong>Дата документа:</strong> ${window.formatDate(debt.created_at)}
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px;">
+          <div>
+            <div style="font-size: 12px; color: #6b7280;">Сумма документа</div>
+            <div style="font-size: 16px; font-weight: 600; color: #111827;">${Number(debt.total_amount).toFixed(2)} ₸</div>
+          </div>
+          <div>
+            <div style="font-size: 12px; color: #6b7280;">Оплачено</div>
+            <div style="font-size: 16px; font-weight: 600; color: #10b981;">${Number(debt.paid_amount).toFixed(2)} ₸</div>
+          </div>
+          <div>
+            <div style="font-size: 12px; color: #6b7280;">Остаток долга</div>
+            <div style="font-size: 16px; font-weight: 600; color: #ef4444;">${Number(debt.debt_amount).toFixed(2)} ₸</div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Устанавливаем максимальную сумму
+    const amountInput = document.getElementById('payDebtAmount');
+    const maxAmountSpan = document.getElementById('payDebtMaxAmount');
+    if (amountInput && maxAmountSpan) {
+      amountInput.max = debt.debt_amount;
+      amountInput.value = debt.debt_amount;
+      maxAmountSpan.textContent = Number(debt.debt_amount).toFixed(2);
+    }
+
+    // Заполняем методы оплаты
+    const methodSelect = document.getElementById('payDebtMethod');
+    if (methodSelect && window.PAYMENT_METHODS) {
+      methodSelect.innerHTML = window.PAYMENT_METHODS.map(method => 
+        `<option value="${method.id}">${method.name}</option>`
+      ).join('');
+    }
+
+    // Открываем модалку
+    window.openModal('modalPayDebt');
+
+  } catch (error) {
+    console.error('Ошибка открытия модального окна:', error);
+    window.showToast('Ошибка загрузки данных', 'error');
+  }
+};
+
+// =============================================
+// ОТПРАВКА ОПЛАТЫ
+// =============================================
+
+window.submitPayment = async function(event) {
+  event.preventDefault();
+
+  if (!selectedDebt) {
+    window.showToast('Долг не выбран', 'error');
+    return;
+  }
+
+  const form = event.target;
+  const amount = parseFloat(form.amount.value);
+  const paymentMethodId = form.paymentMethod.value;
+  const comment = form.comment.value;
+
+  // Валидация
+  const validation = validatePayment(selectedDebt, amount);
+  if (!validation.valid) {
+    window.showToast(validation.error, 'error');
+    return;
+  }
+
+  try {
+    // Показываем индикатор загрузки
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Обработка...';
+
+    // Выполняем оплату
+    await paySupplierDebt(selectedDebt.id, amount, paymentMethodId, comment);
+
+    // Успех
+    window.showToast(`Оплата на сумму ${amount.toFixed(2)} ₸ успешно проведена`, 'success');
+    
+    // Закрываем модалку
+    window.closeModal('modalPayDebt');
+    
+    // Обновляем страницу
+    await window.loadDebtsPage();
+
+  } catch (error) {
+    console.error('Ошибка оплаты:', error);
+    window.showToast('Ошибка: ' + error.message, 'error');
+    
+    // Возвращаем кнопку в исходное состояние
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.disabled = false;
+    submitBtn.textContent = '💰 Оплатить';
+  }
+};
+
+// =============================================
+// ПОКАЗАТЬ ИСТОРИЮ ОПЛАТ
+// =============================================
+
+window.showPaymentHistory = async function(debtId) {
+  try {
+    const debt = await loadDebtWithPayments(debtId);
+
+    // Заполняем информацию о долге
+    const infoContainer = document.getElementById('historyDebtInfo');
+    if (infoContainer) {
+      infoContainer.innerHTML = `
+        <div style="margin-bottom: 8px;">
+          <strong>Поставщик:</strong> ${debt.supplier?.name || debt.supplier_name}
+        </div>
+        <div style="margin-bottom: 8px;">
+          <strong>Дата документа:</strong> ${window.formatDate(debt.created_at)}
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px;">
+          <div>
+            <div style="font-size: 12px; color: #6b7280;">Сумма документа</div>
+            <div style="font-size: 16px; font-weight: 600; color: #111827;">${Number(debt.total_amount).toFixed(2)} ₸</div>
+          </div>
+          <div>
+            <div style="font-size: 12px; color: #6b7280;">Оплачено</div>
+            <div style="font-size: 16px; font-weight: 600; color: #10b981;">${Number(debt.paid_amount).toFixed(2)} ₸</div>
+          </div>
+          <div>
+            <div style="font-size: 12px; color: #6b7280;">Остаток</div>
+            <div style="font-size: 16px; font-weight: 600; color: ${debt.status === 'closed' ? '#10b981' : '#ef4444'};">
+              ${Number(debt.debt_amount).toFixed(2)} ₸
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Заполняем список оплат
+    const listContainer = document.getElementById('paymentHistoryList');
+    if (listContainer) {
+      if (!debt.payments || debt.payments.length === 0) {
+        listContainer.innerHTML = `
+          <div style="padding: 40px; text-align: center; color: #9ca3af;">
+            История оплат пуста
+          </div>
+        `;
+      } else {
+        listContainer.innerHTML = debt.payments.map(payment => `
+          <div style="padding: 16px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+              <div>
+                <div style="font-weight: 600; color: #111827; margin-bottom: 4px;">
+                  ${Number(payment.amount).toFixed(2)} ₸
+                </div>
+                <div style="font-size: 13px; color: #6b7280;">
+                  ${payment.payment_method_name}
+                </div>
+              </div>
+              <div style="text-align: right; font-size: 13px; color: #6b7280;">
+                ${window.formatDate(payment.paid_at)}
+              </div>
+            </div>
+            ${payment.comment ? `
+              <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb; font-size: 13px; color: #6b7280;">
+                ${payment.comment}
+              </div>
+            ` : ''}
+          </div>
+        `).join('');
+      }
+    }
+
+    // Открываем модалку
+    window.openModal('modalPaymentHistory');
+
+  } catch (error) {
+    console.error('Ошибка загрузки истории:', error);
+    window.showToast('Ошибка загрузки истории оплат', 'error');
+  }
+};
+
+// Автозагрузка при открытии секции
+document.addEventListener('DOMContentLoaded', () => {
+  // Если секция долгов активна - загружаем данные
+  const debtsSection = document.getElementById('section-supplier-debts');
+  if (debtsSection && debtsSection.style.display !== 'none') {
+    window.loadDebtsPage();
+  }
+});
+
+</script>

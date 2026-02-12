@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Вход - Kassir POS</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0f172a;
+      color: #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .login-container {
+      width: 100%;
+      max-width: 420px;
+      background: #1e293b;
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+
+    .logo-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      font-weight: 800;
+      color: #fff;
+      box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+    }
+
+    .logo-text {
+      font-size: 28px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 32px;
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      background: #334155;
+      padding: 4px;
+      border-radius: 12px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 12px;
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-weight: 600;
+      font-size: 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tab.active {
+      background: #3b82f6;
+      color: #fff;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .input {
+      width: 100%;
+      padding: 14px 16px;
+      background: #334155;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      color: #f1f5f9;
+      font-size: 16px;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+
+    .input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: #fff;
+      font-weight: 700;
+      font-size: 16px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3);
+      margin-top: 24px;
+    }
+
+    .btn-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(59, 130, 246, 0.4);
+    }
+
+    .btn-submit:active {
+      transform: translateY(0);
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .error-message {
+      background: #dc2626;
+      color: #fff;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .error-message.show {
+      display: block;
+      animation: shake 0.5s;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      75% { transform: translateX(10px); }
+    }
+
+    .auth-form {
+      display: none;
+    }
+
+    .auth-form.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="logo">
+      <div class="logo-icon">K</div>
+      <span class="logo-text">Kassir</span>
+    </div>
+
+    <h2 id="authTitle">Вход в систему</h2>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchAuthMode('login')">Вход</button>
+      <button class="tab" onclick="switchAuthMode('register')">Регистрация</button>
+    </div>
+
+    <div class="error-message" id="errorMessage"></div>
+
+    <!-- ФОРМА ВХОДА -->
+    <form id="loginForm" class="auth-form active" onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <label class="label">Email</label>
+        <input type="email" id="loginEmail" class="input" placeholder="example@mail.com" required autocomplete="email">
+      </div>
+
+      <div class="form-group">
+        <label class="label">Пароль</label>
+        <input type="password" id="loginPassword" class="input" placeholder="Введите пароль" required autocomplete="current-password">
+      </div>
+
+      <button type="submit" class="btn-submit">ВОЙТИ</button>
+    </form>
+
+    <!-- ФОРМА РЕГИСТРАЦИИ -->
+    <form id="registerForm" class="auth-form" onsubmit="handleRegister(event)">
+      <div class="form-group">
+        <label class="label">Название компании</label>
+        <input type="text" id="regCompanyName" class="input" placeholder="Моя компания" required autocomplete="organization">
+      </div>
+
+      <div class="form-group">
+        <label class="label">Email</label>
+        <input type="email" id="regEmail" class="input" placeholder="example@mail.com" required autocomplete="email">
+      </div>
+
+      <div class="form-group">
+        <label class="label">Пароль</label>
+        <input type="password" id="regPassword" class="input" placeholder="Минимум 6 символов" required autocomplete="new-password">
+      </div>
+
+      <button type="submit" class="btn-submit">ЗАРЕГИСТРИРОВАТЬСЯ</button>
+    </form>
+  </div>
+
+  <script type="module" src="login.js"></script>
+</body>
+</html>

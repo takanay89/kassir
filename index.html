@@ -1,0 +1,1622 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>POS Kassir</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .btn-income-mini {
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #059669;
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-income-mini:hover { background: #d1fae5; }
+    
+    .btn-stock-action {
+      padding: 4px 8px;
+      font-size: 14px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      line-height: 1;
+    }
+    .btn-stock-action:hover { background: #e5e7eb; }
+    .btn-writeoff-sm:hover { background: #fef3c7; border-color: #fbbf24; }
+    .btn-return-sm:hover { background: #ede9fe; border-color: #a78bfa; }
+    
+    /* Стили для выбора магазина */
+    .store-location-item:hover {
+      background: #4b5563 !important;
+      transform: translateX(4px);
+    }
+    .store-location-item.selected-store {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+      border-left: 4px solid #34d399;
+    }
+  </style>
+</head>
+<body>
+  <!-- STATUS BAR -->
+  <div class="status-bar" id="statusBar">
+    <span class="status-dot"></span>
+    <span class="status-text">Online</span>
+  </div>
+
+  <!-- TOP HEADER -->
+  <header class="top-header">
+    <div class="store-info">
+      <span class="store-label">Компания:</span>
+      <span class="store-name" id="companyName">Загрузка...</span>
+      <span class="store-label" style="margin-left: 20px;">Магазин:</span>
+      <span class="store-name" id="storeName" >Не выбран</span>
+    </div>
+    
+    <div class="user-profile">
+      <span class="user-name" id="userName">Пользователь</span>
+      <button class="btn-logout" onclick="logout()">Выход</button>
+    </div>
+  </header>
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <div class="logo-icon">K</div>
+        <span class="logo-text">Kassir</span>
+      </div>
+    </div>
+    <div class="nav-menu">
+      <button class="nav-item active" data-section="trading" onclick="showSection('trading')">
+        <svg class="nav-icon-svg" style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+        </svg>
+        <span class="nav-label">Касса</span>
+      </button>
+      <button class="nav-item" data-section="products" onclick="showSection('products')">
+        <svg class="nav-icon-svg" style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+        </svg>
+        <span class="nav-label">Товары</span>
+      </button>
+      <button class="nav-item" data-section="suppliers" onclick="showSection('suppliers')">
+        <svg class="nav-icon-svg" style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+          <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+        </svg>
+        <span class="nav-label">Поставщики</span>
+      </button>
+      <button class="nav-item" data-section="clients" onclick="showSection('clients')">
+        <svg class="nav-icon-svg" style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        <span class="nav-label">Клиенты</span>
+      </button>
+      <button class="nav-item" data-section="expenses" onclick="showSection('expenses')">
+        <svg class="nav-icon-svg" style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+        </svg>
+        <span class="nav-label">Расходы</span>
+      </button>
+      <button class="nav-item" data-section="reports" onclick="showSection('reports')">
+        <svg class="nav-icon-svg" style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+          <line x1="6" y1="20" x2="6" y2="14"/>
+        </svg>
+        <span class="nav-label">Отчёты</span>
+      </button>
+      <button class="nav-item" data-section="money" onclick="showSection('money')">
+        <svg class="nav-icon-svg" style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+        </svg>
+        <span class="nav-label">Деньги</span>
+      </button>
+      <button class="nav-item" data-section="settings" onclick="showSection('settings')">
+        <svg class="nav-icon-svg" style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"/>
+        </svg>
+        <span class="nav-label">Настройки</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+    
+    <!-- SECTION: TRADING (ТОРГОВЛЯ) -->
+    <section class="section active" id="section-trading">
+      <div class="section-header">
+        <h1 class="section-title">Торговля</h1>
+      </div>
+
+      <!-- Вкладки операций -->
+      <div class="trading-tabs">
+        <button class="tab-btn active" data-tab="sale" onclick="switchTradingTab('sale')">Продажа</button>
+        <button class="tab-btn" data-tab="return" onclick="switchTradingTab('return')">Возврат</button>
+      </div>
+
+      <div class="trading-grid">
+        <!-- LEFT PANEL -->
+        <div class="left-panel">
+          
+          <!-- TAB: SALE (Продажа) -->
+          <div class="trading-tab-content active" id="tab-sale">
+            <!-- Продажа -->
+            <div class="card">
+              <div class="card-title">Продажа</div>
+              <div class="search-box-modern" style="position:relative;display:flex;align-items:center;background:var(--bg-secondary);border:2px solid var(--border);border-radius:12px;padding:0 12px;margin-bottom:20px;transition:all 0.2s;">
+                <svg style="width:20px;height:20px;color:var(--text-tertiary);flex-shrink:0;margin-right:8px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                </svg>
+                <input type="text" id="barcodeInput" placeholder="Поиск товара или сканирование..." autofocus style="flex:1;padding:14px 0;background:transparent;border:none;font-size:15px;outline:none;">
+                <button id="scanBarcodeBtn" onclick="openBarcodeScanner()" style="width:40px;height:40px;background:linear-gradient(135deg,#3b82f6,#2563eb);border:none;border-radius:8px;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;margin:0 4px;" title="Сканировать штрихкод">
+                  <svg style="width:22px;height:22px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <path d="M9 3v18M15 3v18"/>
+                  </svg>
+                </button>
+                <button id="clearSearchBtn" onclick="clearSearch()" style="display:none;width:32px;height:32px;background:rgba(0,0,0,0.05);border:none;border-radius:50%;color:var(--text-secondary);font-size:20px;cursor:pointer;margin-left:4px;">×</button>
+              </div>
+              <div id="productsList" class="products-grid"></div>
+            </div>
+          </div>
+
+          <!-- TAB: RETURN (Возврат) -->
+          <div class="trading-tab-content" id="tab-return">
+            <!-- Выбранная продажа -->
+            <div id="selectedSaleBanner" style="display:none;margin-bottom:16px;padding:14px 18px;background:rgba(139,92,246,0.12);border:1.5px solid rgba(139,92,246,0.35);border-radius:12px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                  <div style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#a78bfa;text-transform:uppercase;margin-bottom:4px;">Выбрана продажа</div>
+                  <div id="selectedSaleInfo" style="font-size:14px;font-weight:600;color:var(--text-primary);"></div>
+                </div>
+                <button onclick="clearSelectedSale()" style="padding:6px 12px;background:rgba(139,92,246,0.2);border:1px solid rgba(139,92,246,0.4);border-radius:8px;color:#a78bfa;font-size:12px;font-weight:600;cursor:pointer;">Сменить</button>
+              </div>
+            </div>
+
+            <!-- Найти продажу для возврата -->
+            <div class="card" id="returnSearchCard">
+              <div class="card-title">Найти продажу для возврата</div>
+              <div class="search-box">
+                <input type="text" id="returnSearchInput" class="input" placeholder="Поиск продажи..." oninput="searchRecentSales()">
+              </div>
+              <div id="returnSalesList" class="sales-list"></div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT PANEL (только для продажи и возврата) -->
+        <div class="right-panel" id="rightPanel">
+
+          <!-- Чек -->
+          <div class="card">
+            <div class="card-title">Чек</div>
+            <div id="cart" class="cart-items"></div>
+          </div>
+
+          <!-- Клиент + баллы лояльности -->
+          <div class="card" id="clientCard">
+            <div class="card-title">Клиент</div>
+            <div style="display:flex;gap:8px;margin-bottom:8px;">
+              <select id="clientSelect" class="input" onchange="onClientSelect()" style="flex:1;">
+                <option value="">Без клиента</option>
+              </select>
+              <button class="btn-secondary" onclick="openNewClientModal()" style="padding:8px 12px;white-space:nowrap;">➕</button>
+            </div>
+            <div id="loyaltyInfo" style="display:none;padding:8px 12px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:8px;font-size:13px;color:#10b981;">
+              Баллы: <strong id="loyaltyPoints">0</strong>
+            </div>
+          </div>
+
+          <!-- Промокод + скидка вручную -->
+          <div class="card" id="discountCard">
+            <div class="card-title">Скидка</div>
+
+            <div class="form-group" style="margin-bottom:10px;">
+              <label style="font-size:11px;color:var(--text-secondary);font-weight:600;letter-spacing:.05em;">ПРОМОКОД</label>
+              <div style="display:flex;gap:8px;">
+                <input type="text" id="promoCodeInput" class="input" placeholder="Введите промокод" oninput="onPromoInput()" style="flex:1;text-transform:uppercase;">
+                <button class="btn-secondary" onclick="applyPromoCode()" style="padding:8px 14px;white-space:nowrap;">Применить</button>
+              </div>
+              <div id="promoResult" style="display:none;margin-top:6px;font-size:13px;padding:6px 10px;border-radius:6px;"></div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:8px;margin:10px 0;color:var(--text-secondary);font-size:12px;">
+              <div style="flex:1;height:1px;background:var(--border);"></div>
+              <span>или скидка вручную</span>
+              <div style="flex:1;height:1px;background:var(--border);"></div>
+            </div>
+
+            <div id="manualDiscountBlock">
+              <div class="discount-inputs">
+                <input type="number" id="discountPercent" class="input input-small" placeholder="%" min="0" max="100" oninput="calculateDiscount()">
+                <span style="margin:0 8px;color:var(--text-secondary);">или</span>
+                <input type="number" id="discountAmount" class="input input-small" placeholder="₸" min="0" oninput="calculateDiscountReverse()">
+              </div>
+              <div class="discount-result" style="margin-top:6px;">Скидка: <span id="discountResultText">0 ₸</span></div>
+            </div>
+          </div>
+
+          <!-- Способ оплаты -->
+          <div class="card">
+            <div class="card-title">Способ оплаты</div>
+            <div class="payment-buttons" id="paymentButtons"></div>
+          </div>
+
+          <!-- Дата и время операции -->
+          <div class="form-group" style="margin-bottom:12px;">
+            <label style="font-size:11px;color:var(--text-secondary);font-weight:600;letter-spacing:.05em;">ДАТА И ВРЕМЯ ОПЕРАЦИИ</label>
+            <input type="datetime-local" id="operationTimeInput" class="input" placeholder="Оставьте пустым для текущего времени">
+          </div>
+
+          <!-- Комментарий -->
+          <div class="form-group" style="margin-bottom:12px;">
+            <label style="font-size:11px;color:var(--text-secondary);font-weight:600;letter-spacing:.05em;">КОММЕНТАРИЙ</label>
+            <textarea id="commentInput" class="input" rows="2" placeholder="Кассир, Halyk и т.д."></textarea>
+          </div>
+
+          <!-- Итого -->
+          <div class="total-card">
+            <div>
+              <div class="total-card-label">Итого</div>
+              <div class="total-card-count" id="cartItemsCount"></div>
+              <div id="totalDiscountLine" style="display:none;font-size:12px;opacity:0.65;margin-top:2px;">Скидка: <span id="totalDiscountValue">0 ₸</span></div>
+            </div>
+            <span class="total-card-amount" id="totalAmount">0 ₸</span>
+          </div>
+
+          <!-- Кнопка ПРОДАТЬ — зелёная -->
+          <button class="btn-sell" id="actionBtn" data-action="ПРОДАТЬ" onclick="submitOperation()">ПРОДАТЬ</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION: PRODUCTS -->
+    <section class="section" id="section-products">
+      <div class="section-header">
+        <h1 class="section-title">Товары и склад</h1>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-secondary" onclick="openNewProduct()">+ Добавить товар</button>
+          <button class="btn-secondary" onclick="downloadExcelTemplate()" title="Скачать шаблон Excel">📄 Excel</button>
+        </div>
+      </div>
+
+      <!-- Вкладки -->
+      <div class="trading-tabs">
+        <button class="tab-btn active" data-tab="catalog" onclick="switchProductsTab('catalog')">
+          ТОВАРЫ
+        </button>
+        <button class="tab-btn" data-tab="stock" onclick="switchProductsTab('stock')">
+          ОСТАТКИ
+        </button>
+        <button class="tab-btn" data-tab="income" onclick="switchProductsTab('income')">
+          ПРИХОД
+        </button>
+        <button class="tab-btn" data-tab="transfer" onclick="switchProductsTab('transfer')">
+          ПЕРЕМЕЩЕНИЕ
+        </button>
+      </div>
+
+      <!-- Контент вкладок -->
+      <div class="products-section-content">
+        
+        <!-- ═══════════════════════════════════════════════════════════════════ -->
+        <!-- TAB 1: ТОВАРЫ (Весь каталог) -->
+        <!-- ═══════════════════════════════════════════════════════════════════ -->
+        <div class="trading-tab-content active" id="tab-catalog">
+          <div class="card">
+            <div class="card-title">Каталог товаров и услуг</div>
+            
+            <!-- Быстрые действия -->
+            <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+              <button class="btn-secondary" onclick="openNewProduct()" style="flex:1;min-width:140px;">
+                + Товар
+              </button>
+              <button class="btn-secondary" onclick="openNewService()" style="flex:1;min-width:140px;">
+                + Услуга
+              </button>
+              <button class="btn-secondary" onclick="document.getElementById('excelUploadInput').click()" style="flex:1;min-width:140px;background:#dcfce7;color:#166534;border-color:#86efac;">
+                📥 Импорт Excel
+              </button>
+              <input type="file" id="excelUploadInput" accept=".xlsx,.xls" style="display:none;" onchange="handleExcelUpload(event)">
+            </div>
+
+            <!-- Поиск и фильтры -->
+            <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap;">
+              <input type="text" id="catalogSearchInput" class="input" placeholder="🔍 Поиск по названию, артикулу, штрихкоду..." oninput="filterCatalogTable()" style="flex:1;min-width:250px;">
+              <select id="catalogTypeFilter" class="input" style="width:140px;" onchange="filterCatalogTable()">
+                <option value="">Все типы</option>
+                <option value="product">Товары</option>
+                <option value="service">Услуги</option>
+              </select>
+            </div>
+
+            <!-- Таблица каталога -->
+            <div id="catalogTable" class="products-table"></div>
+          </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════════════ -->
+        <!-- TAB 2: ОСТАТКИ (Текущие остатки на складе) -->
+        <!-- ═══════════════════════════════════════════════════════════════════ -->
+        <div class="trading-tab-content" id="tab-stock">
+          <div class="card">
+            <div class="card-title">Текущие остатки на складе</div>
+            
+            <!-- Поиск и фильтры -->
+            <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap;">
+              <input type="text" id="stockSearchInput" class="input" placeholder="🔍 Поиск товара..." oninput="filterStockTable()" style="flex:1;min-width:200px;">
+              <select id="stockTypeFilter" class="input" style="width:140px;" onchange="filterStockTable()">
+                <option value="">Все типы</option>
+                <option value="product">Товары</option>
+                <option value="service">Услуги</option>
+              </select>
+              <select id="stockStatusFilter" class="input" style="width:160px;" onchange="filterStockTable()">
+                <option value="">Все остатки</option>
+                <option value="low">⚠️ Мало (&lt; 2 шт)</option>
+                <option value="zero">🔴 Нет на складе</option>
+                <option value="ok">✅ В наличии</option>
+              </select>
+            </div>
+
+            <!-- Таблица остатков -->
+            <div id="stockTable" class="products-table"></div>
+          </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════════════ -->
+        <!-- TAB 3: ПРИХОД (Оприходование товара) -->
+        <!-- ═══════════════════════════════════════════════════════════════════ -->
+        <div class="trading-tab-content" id="tab-income">
+          <div class="card">
+            <div class="card-title">Приход товара на склад</div>
+            
+            <!-- Информационная панель -->
+            <div style="padding:0 0 16px 0;margin-bottom:16px;">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+                <div>
+                  <div style="font-weight:600;color:#e2e8f0;font-size:15px;">Оприходование товара</div>
+                  <div style="font-size:13px;color:#94a3b8;margin-top:2px;">Выберите товар из списка и укажите количество для прихода на склад</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Поиск -->
+            <input type="text" id="incomeSearchInput" class="input" placeholder="🔍 Найти товар для прихода..." oninput="filterIncomeProducts()" style="margin-bottom:12px;">
+            
+            <!-- Таблица товаров для прихода -->
+            <div id="incomeProductsTable" class="products-table"></div>
+          </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════════════ -->
+        <!-- TAB 4: ПЕРЕМЕЩЕНИЕ (Перемещение товара между локациями) -->
+        <!-- ═══════════════════════════════════════════════════════════════════ -->
+        <div class="trading-tab-content" id="tab-transfer">
+          <div class="card">
+            <div class="card-title">🔄 Перемещение товара между локациями</div>
+            
+            <!-- Информационная панель -->
+            <div style="padding:0 0 20px 0;margin-bottom:20px;">
+              <div>
+                <div style="font-weight:600;color:#e2e8f0;font-size:15px;">Перемещение товаров</div>
+                <div style="font-size:13px;color:#94a3b8;margin-top:2px;">Выберите локации и отметьте товары для перемещения</div>
+              </div>
+            </div>
+
+            <!-- Блок выбора локаций -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+              <div>
+                <label style="display:block;margin-bottom:8px;font-weight:600;font-size:14px;color:#e2e8f0;">Откуда</label>
+                <select id="transferSourceSelect" class="input" style="width:100%;">
+                  <option value="">Выберите локацию...</option>
+                </select>
+                <div id="transferSourceBalance" style="margin-top:6px;font-size:12px;color:#94a3b8;"></div>
+              </div>
+              <div>
+                <label style="display:block;margin-bottom:8px;font-weight:600;font-size:14px;color:#e2e8f0;">Куда</label>
+                <select id="transferDestSelect" class="input" style="width:100%;">
+                  <option value="">Выберите локацию...</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Поиск и фильтры -->
+            <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
+              <input type="text" id="transferSearchInput" class="input" placeholder="🔍 Поиск по названию, артикулу..." style="flex:1;">
+              <button id="transferSelectAllBtn" class="btn-secondary" style="white-space:nowrap;display:none;">
+                ☑ Выбрать всё
+              </button>
+              <button id="transferDeselectAllBtn" class="btn-secondary" style="white-space:nowrap;display:none;">
+                ☐ Снять всё
+              </button>
+            </div>
+            
+            <!-- Таблица товаров с чекбоксами -->
+            <div id="transferProductsTable" style="margin-bottom:20px;">
+              <div style="text-align:center;padding:40px;color:#9ca3af;font-size:14px;">
+                Выберите локацию "Откуда" для загрузки товаров
+              </div>
+            </div>
+            
+            <!-- Блок выбранных товаров -->
+            <div id="transferSelectedBlock" style="display:none;background:rgba(34, 197, 94, 0.05);border-radius:10px;padding:16px;margin-bottom:16px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <div style="font-weight:700;font-size:15px;color:#22c55e;">Выбрано для перемещения</div>
+                <button id="transferClearSelectedBtn" class="btn-secondary" style="padding:6px 12px;font-size:13px;">
+                  Очистить
+                </button>
+              </div>
+              <div id="transferSelectedList" style="display:grid;gap:8px;"></div>
+              <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(34, 197, 94, 0.3);font-weight:600;color:#22c55e;">
+                Всего: <span id="transferSelectedCount">0</span> товаров
+              </div>
+            </div>
+
+            <!-- Кнопка выполнения -->
+            <button id="executeTransferBtn" class="btn-primary" style="width:100%;padding:14px;font-size:16px;font-weight:600;" disabled>
+              Выполнить перемещение
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SECTION: REPORTS -->
+    <section class="section" id="section-reports">
+      <div class="section-header">
+        <h1 class="section-title">Отчёты</h1>
+      </div>
+
+      <!-- Фильтр периода -->
+      <div class="period-buttons" id="reportsPeriodBtns">
+        <button class="period-btn active" onclick="changePeriod('day')">День</button>
+        <button class="period-btn" onclick="changePeriod('week')">Неделя</button>
+        <button class="period-btn" onclick="changePeriod('month')">Месяц</button>
+      </div>
+
+      <!-- Вкладки отчётов -->
+      <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--border-color);overflow-x:auto;">
+        <button class="report-tab-btn active" data-tab="cash"    onclick="switchReportTab('cash')"      style="padding:10px 18px;background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--primary-color);border-bottom:2px solid var(--primary-color);margin-bottom:-2px;white-space:nowrap;">Все операции</button>
+        <button class="report-tab-btn"        data-tab="sales"   onclick="switchReportTab('sales')"     style="padding:10px 18px;background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-secondary);border-bottom:2px solid transparent;margin-bottom:-2px;white-space:nowrap;">Продажи</button>
+        <button class="report-tab-btn"        data-tab="returns" onclick="switchReportTab('returns')"   style="padding:10px 18px;background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-secondary);border-bottom:2px solid transparent;margin-bottom:-2px;white-space:nowrap;">Возвраты</button>
+        <button class="report-tab-btn"        data-tab="stock"   onclick="switchReportTab('stock')"     style="padding:10px 18px;background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-secondary);border-bottom:2px solid transparent;margin-bottom:-2px;white-space:nowrap;">Движение товаров</button>
+        <button class="report-tab-btn"        data-tab="balance" onclick="switchReportTab('balance')"   style="padding:10px 18px;background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-secondary);border-bottom:2px solid transparent;margin-bottom:-2px;white-space:nowrap;">Остатки</button>
+      </div>
+
+      <!-- ТАБ 1: Все операции (cash_transactions) -->
+      <div id="reportTab-cash">
+        <div class="card">
+          <div class="stats-grid" style="margin-bottom:16px;">
+            <div class="stat-card">
+              <div class="stat-label">Приход денег</div>
+              <div class="stat-value" id="rCashIncome" style="color:#10b981;">0 ₸</div>
+              <div class="stat-count" id="rCashIncomeCount">0 операций</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Расход денег</div>
+              <div class="stat-value" id="rCashExpense" style="color:#ef4444;">0 ₸</div>
+              <div class="stat-count" id="rCashExpenseCount">0 операций</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Баланс</div>
+              <div class="stat-value" id="rCashBalance">0 ₸</div>
+            </div>
+          </div>
+          <div id="rCashTable"><div style="text-align:center;padding:20px;color:var(--text-secondary);">Загрузка...</div></div>
+        </div>
+      </div>
+
+      <!-- ТАБ 2: Продажи (sales) -->
+      <div id="reportTab-sales" style="display:none;">
+        <div class="card">
+          <div class="stats-grid" style="margin-bottom:16px;">
+            <div class="stat-card">
+              <div class="stat-label">Выручка</div>
+              <div class="stat-value" id="rSalesTotal">0 ₸</div>
+              <div class="stat-count" id="rSalesCount">0 продаж</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Средний чек</div>
+              <div class="stat-value" id="rSalesAvg">0 ₸</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Скидки</div>
+              <div class="stat-value" id="rSalesDiscount" style="color:#f59e0b;">0 ₸</div>
+            </div>
+          </div>
+          <div id="rSalesTable"><div style="text-align:center;padding:20px;color:var(--text-secondary);">Загрузка...</div></div>
+        </div>
+      </div>
+
+      <!-- ТАБ 2.5: Возвраты (refunded sales) -->
+      <div id="reportTab-returns" style="display:none;">
+        <div class="card">
+          <div class="stats-grid" style="margin-bottom:16px;">
+            <div class="stat-card">
+              <div class="stat-label">Сумма возвратов</div>
+              <div class="stat-value" id="rReturnsTotal" style="color:#ef4444;">0 ₸</div>
+              <div class="stat-count" id="rReturnsCount">0 возвратов</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Средний возврат</div>
+              <div class="stat-value" id="rReturnsAvg">0 ₸</div>
+            </div>
+          </div>
+          <div id="rReturnsTable"><div style="text-align:center;padding:20px;color:var(--text-secondary);">Загрузка...</div></div>
+        </div>
+      </div>
+
+      <!-- ТАБ 3: Движение товаров (stock_movements) -->
+      <div id="reportTab-stock" style="display:none;">
+        <div class="card">
+          <div class="stats-grid" style="margin-bottom:16px;">
+            <div class="stat-card">
+              <div class="stat-label">Приход (шт)</div>
+              <div class="stat-value" id="rStockIn" style="color:#10b981;">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Расход (шт)</div>
+              <div class="stat-value" id="rStockOut" style="color:#ef4444;">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Операций</div>
+              <div class="stat-value" id="rStockOpsCount">0</div>
+            </div>
+          </div>
+          <div id="rStockTable"><div style="text-align:center;padding:20px;color:var(--text-secondary);">Загрузка...</div></div>
+        </div>
+      </div>
+
+      <!-- ТАБ 4: Остатки (product_balances) — период не нужен -->
+      <div id="reportTab-balance" style="display:none;">
+        <div class="card">
+          <div class="stats-grid" style="margin-bottom:16px;">
+            <div class="stat-card">
+              <div class="stat-label">Позиций</div>
+              <div class="stat-value" id="rBalanceItems">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Всего единиц</div>
+              <div class="stat-value" id="rBalanceQty">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">На сумму (себест.)</div>
+              <div class="stat-value" id="rBalanceValue">0 ₸</div>
+            </div>
+          </div>
+          <div id="rBalanceTable"><div style="text-align:center;padding:20px;color:var(--text-secondary);">Загрузка...</div></div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- SECTION: SUPPLIERS -->
+    <section class="section" id="section-suppliers">
+      <div class="section-header">
+        <h1 class="section-title">Поставщики</h1>
+        <button class="btn-secondary" onclick="openNewSupplier()">+ Добавить поставщика</button>
+      </div>
+      <div class="card">
+        <input type="text" id="supplierSearchInput" class="input" placeholder="Поиск..." oninput="filterSuppliers()">
+        <div id="suppliersTable" class="products-table"></div>
+      </div>
+    </section>
+
+    <!-- SECTION: CLIENTS -->
+    <section class="section" id="section-clients">
+      <div class="section-header">
+        <h1 class="section-title">Клиенты</h1>
+        <button class="btn-secondary" onclick="openNewClient()">+ Добавить клиента</button>
+      </div>
+      <div class="card">
+        <input type="text" id="clientSearchInput" class="input" placeholder="Поиск..." oninput="filterClients()">
+        <div id="clientsTable" class="products-table"></div>
+      </div>
+    </section>
+
+    <!-- SECTION: EXPENSES -->
+    <section class="section" id="section-expenses">
+      <div class="section-header">
+        <h1 class="section-title">Расходы</h1>
+        <button class="btn-secondary" onclick="openNewExpense()">+ Добавить расход</button>
+      </div>
+      
+      <div class="period-buttons">
+        <button class="period-btn active" onclick="changeExpensePeriod('day')">День</button>
+        <button class="period-btn" onclick="changeExpensePeriod('week')">Неделя</button>
+        <button class="period-btn" onclick="changeExpensePeriod('month')">Месяц</button>
+      </div>
+
+      <div class="card">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Всего расходов</div>
+            <div class="stat-value" id="statExpenses">0 ₸</div>
+            <div class="stat-count" id="statExpensesCount">0 операций</div>
+          </div>
+        </div>
+        
+        <div class="card-title" style="margin-top:24px;">История расходов</div>
+        <div id="expensesHistory" class="sales-history"></div>
+      </div>
+    </section>
+
+    <!-- SECTION: MONEY (P&L) -->
+    <section class="section" id="section-money">
+      <div class="section-header">
+        <h1 class="section-title">Деньги</h1>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-secondary" onclick="openCashModal('in')" style="background:rgba(16,185,129,.15);border-color:#10b981;color:#10b981;">+ Внести</button>
+          <button class="btn-secondary" onclick="openCashModal('out')" style="background:rgba(239,68,68,.15);border-color:#ef4444;color:#ef4444;">− Снять</button>
+        </div>
+      </div>
+
+      <div class="period-buttons">
+        <button class="period-btn active" onclick="changeMoneyPeriod('day')">День</button>
+        <button class="period-btn" onclick="changeMoneyPeriod('week')">Неделя</button>
+        <button class="period-btn" onclick="changeMoneyPeriod('month')">Месяц</button>
+      </div>
+
+      <!-- Текущий баланс -->
+      <div style="margin-bottom:24px;">
+        <h3 style="font-size:14px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px;">💰 Текущий баланс</h3>
+        <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));">
+          <div class="stat-card" style="background:linear-gradient(135deg,rgba(16,185,129,0.1) 0%,rgba(5,150,105,0.05) 100%);border-left:4px solid #10b981;">
+            <div class="stat-label" style="color:#10b981;">💵 Наличные</div>
+            <div class="stat-value" id="balanceCash" style="color:#10b981;font-size:26px;font-weight:800;">0 ₸</div>
+          </div>
+          <div class="stat-card" style="background:linear-gradient(135deg,rgba(59,130,246,0.1) 0%,rgba(37,99,235,0.05) 100%);border-left:4px solid #3b82f6;">
+            <div class="stat-label" style="color:#3b82f6;">💳 Безналичные</div>
+            <div class="stat-value" id="balanceCard" style="color:#3b82f6;font-size:26px;font-weight:800;">0 ₸</div>
+          </div>
+          <div class="stat-card" style="background:linear-gradient(135deg,rgba(139,92,246,0.1) 0%,rgba(124,58,237,0.05) 100%);border-left:4px solid #8b5cf6;">
+            <div class="stat-label" style="color:#8b5cf6;">💼 Всего</div>
+            <div class="stat-value" id="balanceTotal" style="color:#8b5cf6;font-size:26px;font-weight:800;">0 ₸</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- КАРточки-сводка -->
+      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));">
+        <div class="stat-card" style="border-left:4px solid #10b981;">
+          <div class="stat-label">Выручка</div>
+          <div class="stat-value" id="mRevenue" style="color:#10b981;font-size:22px;">0 ₸</div>
+          <div class="stat-count" id="mRevenueCount">0 продаж</div>
+        </div>
+        <div class="stat-card" style="border-left:4px solid #ef4444;">
+          <div class="stat-label">Расходы</div>
+          <div class="stat-value" id="mExpenses" style="color:#ef4444;font-size:22px;">0 ₸</div>
+          <div class="stat-count" id="mExpensesCount">0 операций</div>
+        </div>
+        <div class="stat-card" style="border-left:4px solid #f59e0b;">
+          <div class="stat-label">Себестоимость</div>
+          <div class="stat-value" id="mCost" style="color:#f59e0b;font-size:22px;">0 ₸</div>
+        </div>
+        <div class="stat-card" style="border-left:4px solid #3b82f6;">
+          <div class="stat-label">Чистая прибыль</div>
+          <div class="stat-value" id="mNet" style="font-size:22px;">0 ₸</div>
+        </div>
+      </div>
+
+      <!-- P&L таблица -->
+      <div class="card" style="margin-bottom:16px;">
+        <h3 style="margin-bottom:16px;font-size:15px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.05em;">Прибыли и убытки</h3>
+        <div class="pl-table">
+          <div class="pl-row pl-header"><div>Статья</div><div>Сумма</div></div>
+          <div class="pl-row pl-revenue">
+            <div><strong>Выручка</strong></div>
+            <div><strong id="plRevenue">0 ₸</strong></div>
+          </div>
+          <div class="pl-row">
+            <div style="padding-left:20px;color:var(--text-secondary);">Себестоимость продаж</div>
+            <div id="plCost" style="color:#f59e0b;">0 ₸</div>
+          </div>
+          <div class="pl-row pl-gross">
+            <div><strong>Валовая прибыль</strong></div>
+            <div><strong id="plGross">0 ₸</strong></div>
+          </div>
+          <div class="pl-row pl-section">
+            <div><strong>📉 Операционные расходы</strong></div>
+            <div><strong id="plExpenses">0 ₸</strong></div>
+          </div>
+          <div class="pl-row">
+            <div style="padding-left:20px;color:var(--text-secondary);">Списания товаров</div>
+            <div id="plWriteoff">0 ₸</div>
+          </div>
+          <div id="plExpenseCats"></div>
+          <div class="pl-row pl-operating">
+            <div><strong>Операционная прибыль</strong></div>
+            <div><strong id="plOperating">0 ₸</strong></div>
+          </div>
+          <div class="pl-net pl-row">
+            <div><strong>🏆 Чистая прибыль</strong></div>
+            <div><strong id="plNet">0 ₸</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- График по дням -->
+      <div class="card" id="moneyChartCard" style="display:none;">
+        <h3 style="margin-bottom:16px;font-size:15px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.05em;">Динамика по дням</h3>
+        <div id="moneyChart" style="overflow-x:auto;"></div>
+      </div>
+
+    </section>
+
+    <!-- SECTION: SETTINGS -->
+    <section class="section" id="section-settings">
+      <div class="section-header">
+        <h1 class="section-title">Настройки</h1>
+      </div>
+
+      <!-- Вкладки настроек -->
+      <div class="trading-tabs" style="margin-bottom:20px;">
+        <button class="tab-btn active" data-tab="set-company"   onclick="switchSettingsTab('set-company')">🏢 Компания</button>
+        <button class="tab-btn"        data-tab="set-staff"     onclick="switchSettingsTab('set-staff')">Сотрудники</button>
+        <button class="tab-btn"        data-tab="set-payments"  onclick="switchSettingsTab('set-payments')">Оплата</button>
+        <button class="tab-btn"        data-tab="set-promos"    onclick="switchSettingsTab('set-promos')">🎟️ Промокоды</button>
+        <button class="tab-btn"        data-tab="set-expenses"  onclick="switchSettingsTab('set-expenses')">🏷️ Категории расходов</button>
+        <button class="tab-btn"        data-tab="set-system"    onclick="switchSettingsTab('set-system')">Система</button>
+      </div>
+
+      <!-- ТАБ: КОМПАНИЯ -->
+      <div class="trading-tab-content active" id="tab-set-company">
+        <div class="card">
+          <div class="card-title">Компания</div>
+          <div class="form-group">
+            <label class="label">Название компании</label>
+            <div style="display:flex;gap:8px;">
+              <input type="text" id="settingCompanyName" class="input" placeholder="Название компании" style="flex:1;">
+              <button class="btn-secondary" onclick="saveCompanyName()">Сохранить</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div class="card-title" style="margin-bottom:0;">Торговые точки</div>
+            <button class="btn-secondary" onclick="openNewStoreModal()">+ Добавить</button>
+          </div>
+          <div id="storeLocationsList"></div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div class="card-title" style="margin-bottom:0;">Склады</div>
+            <button class="btn-secondary" onclick="openNewWarehouseModal()">+ Добавить</button>
+          </div>
+          <div id="warehousesList"></div>
+        </div>
+      </div>
+
+      <!-- ТАБ: СОТРУДНИКИ -->
+      <div class="trading-tab-content" id="tab-set-staff">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div class="card-title" style="margin-bottom:0;">Сотрудники</div>
+            <button class="btn-secondary" onclick="openInviteModal()">+ Пригласить</button>
+          </div>
+          <div id="staffList"></div>
+        </div>
+      </div>
+
+      <!-- ТАБ: МЕТОДЫ ОПЛАТЫ -->
+      <div class="trading-tab-content" id="tab-set-payments">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div class="card-title" style="margin-bottom:0;">Методы оплаты</div>
+            <button class="btn-secondary" onclick="openNewPaymentMethodModal()">+ Добавить</button>
+          </div>
+          <div id="paymentMethodsList"></div>
+        </div>
+      </div>
+
+      <!-- ТАБ: ПРОМОКОДЫ -->
+      <div class="trading-tab-content" id="tab-set-promos">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div class="card-title" style="margin-bottom:0;">Промокоды</div>
+            <button class="btn-secondary" onclick="openNewPromoModal()">+ Создать</button>
+          </div>
+          <div id="promoCodesList"></div>
+        </div>
+      </div>
+
+      <!-- ТАБ: КАТЕГОРИИ РАСХОДОВ -->
+      <div class="trading-tab-content" id="tab-set-expenses">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div class="card-title" style="margin-bottom:0;">Категории расходов</div>
+            <button class="btn-secondary" onclick="openNewExpenseCategoryModal()">+ Добавить</button>
+          </div>
+          <div id="expenseCategoriesList"></div>
+        </div>
+      </div>
+
+      <!-- ТАБ: СИСТЕМА -->
+      <div class="trading-tab-content" id="tab-set-system">
+        <div class="card">
+          <div class="card-title">Системные настройки</div>
+
+          <div class="form-group">
+            <label class="label">Налоговая ставка (%)</label>
+            <input type="number" id="settingTaxRate" class="input" placeholder="0" min="0" max="100" style="max-width:200px;">
+          </div>
+
+          <div class="form-group">
+            <label class="label">Порог низкого остатка (шт)</label>
+            <input type="number" id="settingLowStock" class="input" placeholder="5" min="0" style="max-width:200px;">
+          </div>
+
+          <div class="form-group">
+            <label class="label">Валюта по умолчанию</label>
+            <select id="settingCurrency" class="input" style="max-width:200px;">
+              <option value="KZT">KZT — Тенге</option>
+              <option value="USD">USD — Доллар</option>
+              <option value="RUB">RUB — Рубль</option>
+            </select>
+          </div>
+
+          <button class="btn-secondary" onclick="saveSystemSettings()" style="margin-top:8px;">Сохранить настройки</button>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- MODAL: НОВЫЙ ПРОМОКОД -->
+  <div class="modal" id="promoModal">
+    <div class="modal-content" style="max-width:440px;">
+      <div class="modal-header">
+        <h3 id="promoModalTitle">Создать промокод</h3>
+        <button class="modal-close" onclick="closeModal('promoModal')">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editPromoId">
+        <div class="form-group">
+          <label class="label">Код *</label>
+          <input type="text" id="promoCode" class="input" placeholder="ЛЕТО" style="text-transform:uppercase;">
+        </div>
+        <div class="form-group">
+          <label class="label">Описание</label>
+          <input type="text" id="promoDescription" class="input" placeholder="Летняя скидка">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="label">Тип скидки *</label>
+            <select id="promoDiscountType" class="input">
+              <option value="percent">Процент (%)</option>
+              <option value="fixed">Фиксированная (₸)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="label">Размер скидки *</label>
+            <input type="number" id="promoDiscountValue" class="input" placeholder="30" min="0">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="label">Действует с *</label>
+            <input type="date" id="promoValidFrom" class="input">
+          </div>
+          <div class="form-group">
+            <label class="label">Действует до *</label>
+            <input type="date" id="promoValidUntil" class="input">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="label">Мин. сумма покупки (₸)</label>
+            <input type="number" id="promoMinAmount" class="input" placeholder="0" min="0">
+          </div>
+          <div class="form-group">
+            <label class="label">Лимит использований</label>
+            <input type="number" id="promoUsageLimit" class="input" placeholder="Без лимита" min="1">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('promoModal')">Отмена</button>
+        <button class="btn-primary" onclick="savePromoCode()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ТОРГОВАЯ ТОЧКА -->
+  <div class="modal" id="storeModal">
+    <div class="modal-content" style="max-width:380px;">
+      <div class="modal-header">
+        <h3>Торговая точка</h3>
+        <button class="modal-close" onclick="closeModal('storeModal')">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editStoreId">
+        <div class="form-group">
+          <label class="label">Название *</label>
+          <input type="text" id="storeName" class="input" placeholder="Основная точка">
+        </div>
+        <div class="form-group">
+          <label class="label">Адрес</label>
+          <input type="text" id="storeAddress" class="input" placeholder="Адрес (необязательно)">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('storeModal')">Отмена</button>
+        <button class="btn-primary" onclick="saveStoreLocation()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ПРИГЛАШЕНИЕ СОТРУДНИКА -->
+  <div class="modal" id="inviteModal">
+    <div class="modal-content" style="max-width:380px;">
+      <div class="modal-header">
+        <h3>Пригласить сотрудника</h3>
+        <button class="modal-close" onclick="closeModal('inviteModal')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="label">Email *</label>
+          <input type="email" id="inviteEmail" class="input" placeholder="email@example.com">
+        </div>
+        <div class="form-group">
+          <label class="label">Роль *</label>
+          <select id="inviteRole" class="input">
+            <option value="cashier">Кассир</option>
+            <option value="manager">Менеджер</option>
+            <option value="warehouse">Кладовщик</option>
+            <option value="accountant">Бухгалтер</option>
+            <option value="admin">Администратор</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('inviteModal')">Отмена</button>
+        <button class="btn-primary" onclick="sendInvite()">Отправить приглашение</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: НОВЫЙ МЕТОД ОПЛАТЫ -->
+  <div class="modal" id="paymentMethodModal">
+    <div class="modal-content" style="max-width:360px;">
+      <div class="modal-header">
+        <h3>Метод оплаты</h3>
+        <button class="modal-close" onclick="closeModal('paymentMethodModal')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="label">Название *</label>
+          <input type="text" id="newPaymentMethodName" class="input" placeholder="Kaspi, Halyk, Наличные...">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('paymentMethodModal')">Отмена</button>
+        <button class="btn-primary" onclick="savePaymentMethod()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: КАТЕГОРИЯ РАСХОДОВ -->
+  <div class="modal" id="expenseCategoryModal">
+    <div class="modal-content" style="max-width:360px;">
+      <div class="modal-header">
+        <h3>Категория расходов</h3>
+        <button class="modal-close" onclick="closeModal('expenseCategoryModal')">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editExpenseCatId">
+        <div class="form-group">
+          <label class="label">Название *</label>
+          <input type="text" id="expenseCatName" class="input" placeholder="Аренда, Зарплата...">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('expenseCategoryModal')">Отмена</button>
+        <button class="btn-primary" onclick="saveExpenseCategory()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ВНЕСТИ / СНЯТЬ ДЕНЬГИ -->
+  <div class="modal" id="cashModal">
+    <div class="modal-content" style="max-width:360px;">
+      <div class="modal-header">
+        <h3 id="cashModalTitle">Внести деньги</h3>
+        <button class="modal-close" onclick="closeModal('cashModal')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="label">Сумма *</label>
+          <input type="number" id="cashModalAmount" class="input" placeholder="0" min="1" step="any">
+        </div>
+        <div class="form-group">
+          <label class="label">Способ оплаты *</label>
+          <select id="cashModalPayment" class="input"></select>
+        </div>
+        <div class="form-group">
+          <label class="label">Комментарий</label>
+          <input type="text" id="cashModalComment" class="input" placeholder="Необязательно">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('cashModal')">Отмена</button>
+        <button class="btn-primary" id="cashModalSubmit" onclick="saveCashOperation()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+
+  <!-- MODAL: NEW PRODUCT -->
+  <div class="modal" id="modalNewProduct">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Новый товар</h3>
+        <button class="modal-close" onclick="closeModal('modalNewProduct')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="label">Название *</label>
+          <input type="text" id="newProductName" class="input" placeholder="Название товара">
+        </div>
+        <div class="form-group">
+          <label class="label">Артикул (SKU) *</label>
+          <input type="text" id="newProductSKU" class="input" placeholder="Артикул">
+        </div>
+        <div class="form-group">
+          <label class="label">Штрихкод</label>
+          <input type="text" id="newProductBarcode" class="input" placeholder="Штрихкод (необязательно)">
+        </div>
+<div class="form-group">
+  <label class="label">Тип</label>
+  <div style="display:flex;gap:16px;margin-top:8px;">
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+      <input type="radio" name="productType" id="productTypeProduct" value="product" checked onchange="toggleProductQuantityField()">
+      <span>Товар</span>
+    </label>
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+      <input type="radio" name="productType" id="productTypeService" value="service" onchange="toggleProductQuantityField()">
+      <span>Услуга</span>
+    </label>
+  </div>
+</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="label">Цена покупки</label>
+            <input type="number" id="newProductPurchase" class="input" placeholder="0" min="0">
+          </div>
+          <div class="form-group">
+            <label class="label">Цена продажи *</label>
+            <input type="number" id="newProductSale" class="input" placeholder="0" min="0">
+          </div>
+        </div>
+        <div class="form-group" id="newProductQuantityGroup">
+          <label class="label">Количество прихода</label>
+          <input type="number" id="newProductQuantity" class="input" placeholder="0 (без прихода)" min="0" step="1"
+            oninput="document.getElementById('btnSaveNewProduct').textContent = (parseInt(this.value) > 0) ? 'Сохранить и оприходовать' : 'Сохранить'">
+          <small style="color: #6b7280; font-size: 12px; margin-top: 4px; display: block;">
+            Оставьте 0 если не нужно оприходовать товар сейчас
+          </small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('modalNewProduct')">Отмена</button>
+        <button class="btn-primary" id="btnSaveNewProduct" onclick="saveNewProduct()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: NEW PRODUCT INCOME -->
+  <div class="modal" id="modalNewProductIncome">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Новый товар (приход)</h3>
+        <button class="modal-close" onclick="closeModal('modalNewProductIncome')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="label">Название *</label>
+          <input type="text" id="incomeProductName" class="input" placeholder="Название товара">
+        </div>
+        <div class="form-group">
+          <label class="label">Артикул (SKU) *</label>
+          <input type="text" id="incomeProductSKU" class="input" placeholder="Артикул">
+        </div>
+        <div class="form-group">
+          <label class="label">Штрихкод</label>
+          <input type="text" id="incomeProductBarcode" class="input" placeholder="Штрихкод (необязательно)">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="label">Себестоимость *</label>
+            <input type="number" id="incomeProductCost" class="input" placeholder="0" min="0" step="0.01">
+          </div>
+          <div class="form-group">
+            <label class="label">Цена продажи *</label>
+            <input type="number" id="incomeProductPrice" class="input" placeholder="0" min="0" step="0.01">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="label">Количество прихода *</label>
+          <input type="number" id="incomeProductQuantity" class="input" placeholder="0" min="1" step="1">
+        </div>
+
+        <!-- ВЫБОР ПОСТАВЩИКА -->
+        <div class="form-group">
+          <label class="label">Поставщик</label>
+          <div style="display:flex;gap:8px;">
+            <select id="incomeProductSupplier" class="input supplier-select" style="flex:1;">
+              <option value="">— Без поставщика —</option>
+            </select>
+            <button type="button" class="btn-secondary" onclick="openNewSupplierInline()" style="white-space:nowrap;padding:0 12px;">+ Новый</button>
+          </div>
+        </div>
+        
+        <!-- БЛОК ОПЛАТЫ ПОСТАВЩИКУ -->
+        <div class="form-group" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+          <label style="display: flex; align-items: center; cursor: pointer; user-select: none;">
+            <input 
+              type="checkbox" 
+              id="payToSupplier" 
+              onchange="toggleSupplierPayment()"
+              style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;"
+            >
+            <span style="font-weight: 500; color: #374151;">Оплатить поставщику сейчас</span>
+          </label>
+        </div>
+        
+        <!-- Выбор способа оплаты (показывается при включении чекбокса) -->
+        <div id="supplierPaymentBlock" style="display: none; margin-top: 12px; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+          <label class="label">Способ оплаты *</label>
+          <select id="incomeSupplierPaymentMethod" class="input">
+            <!-- Заполняется динамически из PAYMENT_METHODS -->
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('modalNewProductIncome')">Отмена</button>
+        <button class="btn-primary" onclick="saveNewProductIncome()">Оприходовать</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: NEW SERVICE INCOME -->
+  <div class="modal" id="modalNewServiceIncome">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Новая услуга</h3>
+        <button class="modal-close" onclick="closeModal('modalNewServiceIncome')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="label">Название *</label>
+          <input type="text" id="incomeServiceName" class="input" placeholder="Название услуги">
+        </div>
+        <div class="form-group">
+          <label class="label">Артикул (SKU) *</label>
+          <input type="text" id="incomeServiceSKU" class="input" placeholder="Артикул">
+        </div>
+        <div class="form-group">
+          <label class="label">Штрихкод</label>
+          <input type="text" id="incomeServiceBarcode" class="input" placeholder="Штрихкод (необязательно)">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="label">Себестоимость *</label>
+            <input type="number" id="incomeServiceCost" class="input" placeholder="0" min="0" step="0.01">
+          </div>
+          <div class="form-group">
+            <label class="label">Цена продажи *</label>
+            <input type="number" id="incomeServicePrice" class="input" placeholder="0" min="0" step="0.01">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('modalNewServiceIncome')">Отмена</button>
+        <button class="btn-primary" onclick="saveNewServiceIncome()">Добавить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: NEW SUPPLIER -->
+  <div class="modal" id="modalNewSupplier">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Новый поставщик</h3>
+        <button class="modal-close" onclick="closeModal('modalNewSupplier')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="label">Название *</label>
+          <input type="text" id="newSupplierName" class="input" placeholder="Название компании">
+        </div>
+        <div class="form-group">
+          <label class="label">Контакт</label>
+          <input type="text" id="newSupplierContact" class="input" placeholder="Телефон или email">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('modalNewSupplier')">Отмена</button>
+        <button class="btn-primary" onclick="saveNewSupplier()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: NEW CLIENT -->
+  <div class="modal" id="newClientModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="clientModalTitle">Новый клиент</h3>
+        <button class="modal-close" onclick="closeModal('newClientModal')">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editClientId">
+        <div class="form-group">
+          <label class="label">Имя *</label>
+          <input type="text" id="newClientName" class="input" placeholder="Имя клиента">
+        </div>
+        <div class="form-group">
+          <label class="label">Телефон</label>
+          <input type="tel" id="newClientPhone" class="input" placeholder="+7 (___) ___-__-__">
+        </div>
+        <div class="form-group">
+          <label class="label">Комментарий</label>
+          <textarea id="newClientComment" class="input" rows="2" placeholder="Дополнительная информация"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('newClientModal')">Отмена</button>
+        <button class="btn-primary" onclick="saveNewClient()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SUPPLIER (создание / редактирование) -->
+  <div class="modal" id="supplierModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="supplierModalTitle">Новый поставщик</h3>
+        <button class="modal-close" onclick="closeModal('supplierModal')">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editSupplierId">
+        <div class="form-group">
+          <label class="label">Название *</label>
+          <input type="text" id="supplierName" class="input" placeholder="Название компании или ФИО">
+        </div>
+        <div class="form-group">
+          <label class="label">Контакт (телефон / email)</label>
+          <input type="text" id="supplierContact" class="input" placeholder="+7 (___) ___-__-__">
+        </div>
+        <div class="form-group">
+          <label class="label">Комментарий</label>
+          <textarea id="supplierComment" class="input" rows="2" placeholder="Дополнительная информация"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('supplierModal')">Отмена</button>
+        <button class="btn-primary" onclick="saveSupplier()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: NEW EXPENSE -->
+  <div class="modal" id="newExpenseModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Новый расход</h3>
+        <button class="modal-close" onclick="closeModal('newExpenseModal')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="label">Категория *</label>
+          <div style="display:flex;gap:8px;align-items:flex-start;">
+            <select id="newExpenseCategory" class="input" onchange="toggleNewCategoryInput()" style="flex:1;">
+              <option value="">Выберите категорию</option>
+              <option value="rent">Аренда</option>
+              <option value="salary">Зарплата</option>
+              <option value="marketing">Маркетинг и реклама</option>
+              <option value="utilities">Коммунальные услуги</option>
+              <option value="operations">Операционные расходы</option>
+              <option value="taxes">Налоги и сборы</option>
+              <option value="other">Прочие расходы</option>
+              <option value="new">➕ Новая категория</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" id="newCategoryGroup" style="display:none;">
+          <label class="label">Название новой категории *</label>
+          <input type="text" id="newCategoryName" class="input" placeholder="Введите название">
+        </div>
+        <div class="form-group">
+          <label class="label">Сумма *</label>
+          <input type="number" id="newExpenseAmount" class="input" placeholder="0" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label class="label">Описание</label>
+          <textarea id="newExpenseDescription" class="input" rows="2" placeholder="Что оплачено"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="label">Дата</label>
+          <input type="date" id="newExpenseDate" class="input">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('newExpenseModal')">Отмена</button>
+        <button class="btn-primary" onclick="saveNewExpense()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: QUICK STOCK ACTION (Списание / Возврат поставщику) -->
+  <div class="modal" id="quickStockModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="quickStockModalTitle">Списание</h3>
+        <button class="modal-close" onclick="closeModal('quickStockModal')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="label" id="quickStockProductLabel">Товар</label>
+          <div id="quickStockProductName" style="font-weight:600;font-size:15px;padding:10px;background:var(--bg-secondary,#1e293b);border-radius:8px;"></div>
+        </div>
+        <div class="form-group">
+          <label class="label">Доступно: <span id="quickStockAvailable" style="color:var(--primary-color,#3b82f6);font-weight:600;"></span></label>
+          <input type="number" id="quickStockQty" class="input" placeholder="Количество" min="1" step="1">
+        </div>
+        <div class="form-group" id="quickStockReasonGroup">
+          <label class="label" id="quickStockReasonLabel">Причина *</label>
+          <input type="text" id="quickStockReason" class="input" placeholder="Укажите причину">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('quickStockModal')">Отмена</button>
+        <button class="btn-primary" id="quickStockSubmitBtn" onclick="submitQuickStockModal()">Подтвердить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- trading-operations грузится первым чтобы window.switchTradingTab и другие функции были готовы до инициализации script.js -->
+  <script type="module" src="trading-operations.js"></script>
+  <script type="module" src="excel-import.js"></script>
+  <script type="module" src="settings.js"></script>
+  <script type="module" src="script.js"></script>
+  <script>
+    // Регистрация Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => console.log('✅ Service Worker зарегистрирован'))
+          .catch(err => console.log('❌ Service Worker ошибка:', err));
+      });
+    }
+  </script>
+
+  <!-- MODAL: EXCEL IMPORT PREVIEW -->
+  <div class="modal" id="excelImportModal" style="display:none;">
+    <div class="modal-content" style="max-width:900px;width:95%;max-height:90vh;display:flex;flex-direction:column;">
+      <div class="modal-header">
+        <h3 id="excelImportTitle">📥 Загрузка товаров из Excel</h3>
+        <button class="modal-close" onclick="closeModal('excelImportModal')">×</button>
+      </div>
+      <div style="padding:16px 20px;border-bottom:1px solid var(--border-color);">
+        <div id="excelImportStats" style="display:flex;gap:12px;flex-wrap:wrap;"></div>
+      </div>
+      <div style="overflow-y:auto;flex:1;padding:16px 20px;">
+        <div id="excelImportPreview"></div>
+      </div>
+      <div style="padding:16px 20px;border-top:1px solid var(--border-color);display:flex;gap:10px;justify-content:flex-end;">
+        <button class="btn-secondary" onclick="closeModal('excelImportModal')">Отмена</button>
+        <button id="excelImportBtn" class="btn-primary" onclick="confirmExcelImport()" style="background:#166534;color:white;border:none;padding:10px 24px;border-radius:8px;font-weight:600;cursor:pointer;">
+          Загрузить товары
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- MODAL: EDIT PRODUCT -->
+  <div class="modal" id="editProductModal" style="display:none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>✏️ Редактировать товар</h3>
+        <button class="modal-close" onclick="closeModal('editProductModal')">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editProductId">
+        <div class="form-group">
+          <label class="label">Название *</label>
+          <input type="text" id="editProductName" class="input" placeholder="Название товара">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="label">Артикул</label>
+            <input type="text" id="editProductSku" class="input" placeholder="Артикул">
+          </div>
+          <div class="form-group">
+            <label class="label">Штрихкод</label>
+            <input type="text" id="editProductBarcode" class="input" placeholder="Штрихкод">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="label">Себестоимость</label>
+            <input type="number" id="editProductPurchase" class="input" placeholder="0" min="0" step="0.01">
+          </div>
+          <div class="form-group">
+            <label class="label">Цена продажи *</label>
+            <input type="number" id="editProductSale" class="input" placeholder="0" min="0" step="0.01">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="label">Единица измерения</label>
+            <input type="text" id="editProductUnit" class="input" placeholder="шт">
+          </div>
+          <div class="form-group">
+            <label class="label">Комментарий</label>
+            <input type="text" id="editProductComment" class="input" placeholder="Необязательно">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('editProductModal')">Отмена</button>
+        <button class="btn-primary" onclick="saveEditProduct()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+<!-- BARCODE SCANNER MODAL -->
+<div id="barcodeScannerModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:10000;backdrop-filter:blur(8px);">
+  <div style="width:100%;height:100%;display:flex;flex-direction:column;">
+    <div style="padding:20px;display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.3);border-bottom:1px solid rgba(255,255,255,0.1);">
+      <div style="color:#fff;font-size:18px;font-weight:600;">Сканирование штрихкода</div>
+      <button onclick="closeBarcodeScanner()" style="width:44px;height:44px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:50%;color:#fff;font-size:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;">×</button>
+    </div>
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:20px;position:relative;overflow:hidden;">
+      <div id="barcodeScannerViewport" style="width:100%;max-width:500px;aspect-ratio:4/3;position:relative;border-radius:16px;overflow:hidden;">
+        <video id="barcodeScannerVideo" style="width:100%;height:100%;object-fit:cover;"></video>
+        <canvas id="barcodeScannerCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;"></canvas>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:80%;max-width:400px;height:200px;border:3px solid #3b82f6;border-radius:16px;box-shadow:0 0 0 4000px rgba(0,0,0,0.5),inset 0 0 40px rgba(59,130,246,0.3);pointer-events:none;">
+          <div style="position:absolute;top:-2px;left:-2px;width:30px;height:30px;border-top:5px solid #3b82f6;border-left:5px solid #3b82f6;border-radius:8px 0 0 0;"></div>
+          <div style="position:absolute;top:-2px;right:-2px;width:30px;height:30px;border-top:5px solid #3b82f6;border-right:5px solid #3b82f6;border-radius:0 8px 0 0;"></div>
+          <div style="position:absolute;bottom:-2px;left:-2px;width:30px;height:30px;border-bottom:5px solid #3b82f6;border-left:5px solid #3b82f6;border-radius:0 0 0 8px;"></div>
+          <div style="position:absolute;bottom:-2px;right:-2px;width:30px;height:30px;border-bottom:5px solid #3b82f6;border-right:5px solid #3b82f6;border-radius:0 0 8px 0;"></div>
+        </div>
+      </div>
+    </div>
+    <div style="padding:20px;text-align:center;color:rgba(255,255,255,0.7);font-size:14px;font-weight:500;">Наведите камеру на штрихкод</div>
+  </div>
+</div>
+
+<script>
+// BARCODE SCANNER
+let quaggaInstance = null;
+
+window.openBarcodeScanner = function() {
+  const modal = document.getElementById('barcodeScannerModal');
+  if (!modal) return;
+  modal.style.display = 'block';
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => initQuagga(), 100);
+};
+
+window.closeBarcodeScanner = function() {
+  stopQuagga();
+  const modal = document.getElementById('barcodeScannerModal');
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
+};
+
+function initQuagga() {
+  if (quaggaInstance) stopQuagga();
+  Quagga.init({
+    inputStream: {
+      name: "Live",
+      type: "LiveStream",
+      target: document.querySelector('#barcodeScannerViewport'),
+      constraints: {
+        width: { min: 640, ideal: 1280 },
+        height: { min: 480, ideal: 720 },
+        facingMode: "environment",
+        aspectRatio: { min: 1, max: 2 }
+      }
+    },
+    decoder: {
+      readers: ["ean_reader", "ean_8_reader", "code_128_reader", "code_39_reader", "code_93_reader", "upc_reader", "upc_e_reader", "i2of5_reader", "codabar_reader"],
+      multiple: false
+    },
+    locator: { patchSize: "medium", halfSample: true },
+    numOfWorkers: navigator.hardwareConcurrency || 4,
+    frequency: 10,
+    locate: true
+  }, function(err) {
+    if (err) {
+      console.error('Quagga init error:', err);
+      alert('Не удалось запустить камеру. Проверьте разрешения.');
+      closeBarcodeScanner();
+      return;
+    }
+    Quagga.start();
+    quaggaInstance = true;
+  });
+  Quagga.onDetected(onBarcodeDetected);
+}
+
+function stopQuagga() {
+  if (quaggaInstance) {
+    Quagga.offDetected(onBarcodeDetected);
+    Quagga.stop();
+    quaggaInstance = null;
+  }
+}
+
+function onBarcodeDetected(result) {
+  if (!result || !result.codeResult || !result.codeResult.code) return;
+  const barcode = result.codeResult.code;
+  if (navigator.vibrate) navigator.vibrate(200);
+  try {
+    const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGGS46+mjUBELTKXh8bllHw==');
+    audio.play().catch(() => {});
+  } catch(e) {}
+  addProductByBarcode(barcode);
+  setTimeout(() => closeBarcodeScanner(), 300);
+}
+
+function addProductByBarcode(barcode) {
+  const product = PRODUCTS_CACHE.find(p => p.barcode === barcode);
+  if (product) {
+    addToCart(product.id);
+    showToast('✓ Товар добавлен: ' + product.name);
+  } else {
+    const input = document.getElementById('barcodeInput');
+    if (input) {
+      input.value = barcode;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.focus();
+    }
+    showToast('⚠ Товар не найден. Штрихкод: ' + barcode);
+  }
+}
+
+function showToast(message) {
+  const toast = document.createElement('div');
+  toast.textContent = message;
+  toast.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.9);color:#fff;padding:14px 24px;border-radius:12px;font-size:14px;font-weight:500;z-index:10001;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);opacity:0;transition:all 0.3s;';
+  document.body.appendChild(toast);
+  setTimeout(() => toast.style.opacity = '1', 10);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 300);
+  }, 2500);
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Тест остатков</title>
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    
+    const supabase = createClient(
+      'YOUR_SUPABASE_URL',
+      'YOUR_SUPABASE_ANON_KEY'
+    );
+    
+    async function testStock() {
+      const companyId = 'YOUR_COMPANY_ID'; // Замените на реальный ID
+      
+      console.log('📊 Загрузка товаров...');
+      
+      const { data, error } = await supabase
+        .from('products')
+        .select(`
+          id, name, sale_price, purchase_price,
+          product_balances (quantity, store_location_id, warehouse_id)
+        `)
+        .eq('company_id', companyId)
+        .eq('active', true)
+        .limit(5);
+      
+      if (error) {
+        console.error('❌ Ошибка:', error);
+        return;
+      }
+      
+      console.log('✅ Загружено товаров:', data.length);
+      
+      data.forEach(product => {
+        const totalStock = product.product_balances?.reduce((sum, b) => sum + Number(b.quantity), 0) || 0;
+        
+        console.log(`
+📦 ${product.name}
+   - product_balances: ${product.product_balances?.length || 0} записей
+   - Остаток: ${totalStock}
+   - Детали:`, product.product_balances);
+      });
+      
+      document.getElementById('result').innerHTML = `
+        <h2>Результат загрузки:</h2>
+        <pre>${JSON.stringify(data, null, 2)}</pre>
+      `;
+    }
+    
+    window.testStock = testStock;
+  </script>
+</head>
+<body>
+  <h1>Диагностика остатков</h1>
+  <button onclick="testStock()">Загрузить товары</button>
+  <div id="result"></div>
+</body>
+</html>

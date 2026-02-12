@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Принять приглашение</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      max-width: 500px;
+      width: 100%;
+      padding: 40px;
+    }
+    h1 { font-size: 28px; margin-bottom: 8px; color: #1f2937; }
+    .subtitle { color: #6b7280; margin-bottom: 24px; }
+    .info-block {
+      background: #f3f4f6;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .info-row:last-child { margin-bottom: 0; }
+    .label { color: #6b7280; font-size: 14px; }
+    .value { font-weight: 500; color: #1f2937; }
+    .form-group { margin-bottom: 16px; }
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 500;
+      color: #374151;
+      font-size: 14px;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: border-color 0.2s;
+    }
+    input:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+    .btn {
+      width: 100%;
+      padding: 14px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: #2563eb; }
+    .btn:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+    .error {
+      background: #fee2e2;
+      color: #991b1b;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .success {
+      background: #d1fae5;
+      color: #065f46;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="loadingState" class="loading">
+      <p>Загрузка...</p>
+    </div>
+    
+    <div id="inviteForm" style="display: none;">
+      <h1>Приглашение в компанию</h1>
+      <p class="subtitle">Присоединитесь к команде</p>
+      
+      <div class="error" id="errorMessage"></div>
+      <div class="success" id="successMessage"></div>
+      
+      <div class="info-block">
+        <div class="info-row">
+          <span class="label">Компания:</span>
+          <span class="value" id="companyName">—</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Роль:</span>
+          <span class="value" id="roleName">—</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Email:</span>
+          <span class="value" id="inviteEmail">—</span>
+        </div>
+      </div>
+      
+      <form id="acceptForm">
+        <div class="form-group">
+          <label>Полное имя</label>
+          <input type="text" id="fullName" required placeholder="Иван Иванов">
+        </div>
+        
+        <div class="form-group">
+          <label>Пароль</label>
+          <input type="password" id="password" required placeholder="Минимум 6 символов" minlength="6">
+        </div>
+        
+        <div class="form-group">
+          <label>Подтвердите пароль</label>
+          <input type="password" id="confirmPassword" required placeholder="Повторите пароль">
+        </div>
+        
+        <button type="submit" class="btn" id="submitBtn">
+          Принять приглашение
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabaseClient.js"></script>
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    
+    let invitationData = null;
+    
+    const roleLabels = {
+      admin: 'Администратор',
+      manager: 'Менеджер',
+      cashier: 'Кассир',
+      accountant: 'Бухгалтер',
+      warehouse: 'Кладовщик',
+      seller: 'Продавец'
+    };
+    
+    async function loadInvitation() {
+      if (!token) {
+        showError('Неверная ссылка приглашения');
+        return;
+      }
+      
+      try {
+        const { data, error } = await supabase
+          .from('user_invitations')
+          .select(`
+            *,
+            companies (name)
+          `)
+          .eq('token', token)
+          .is('accepted_at', null)
+          .single();
+        
+        if (error || !data) {
+          showError('Приглашение не найдено или уже использовано');
+          return;
+        }
+        
+        if (new Date(data.expires_at) < new Date()) {
+          showError('Срок действия приглашения истёк');
+          return;
+        }
+        
+        invitationData = data;
+        
+        document.getElementById('companyName').textContent = data.companies.name;
+        document.getElementById('roleName').textContent = roleLabels[data.role] || data.role;
+        document.getElementById('inviteEmail').textContent = data.email;
+        
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('inviteForm').style.display = 'block';
+        
+      } catch (err) {
+        showError('Ошибка загрузки: ' + err.message);
+      }
+    }
+    
+    document.getElementById('acceptForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const fullName = document.getElementById('fullName').value.trim();
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+      
+      if (password !== confirmPassword) {
+        showError('Пароли не совпадают');
+        return;
+      }
+      
+      const submitBtn = document.getElementById('submitBtn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Регистрация...';
+      
+      try {
+        // 1. Регистрируем пользователя
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: invitationData.email,
+          password: password,
+          options: {
+            data: {
+              full_name: fullName
+            }
+          }
+        });
+        
+        if (authError) throw authError;
+        
+        // 2. Обновляем профиль
+        const { error: profileError } = await supabase
+          .from('user_profiles')
+          .upsert({
+            id: authData.user.id,
+            full_name: fullName,
+            email: invitationData.email
+          });
+        
+        if (profileError) throw profileError;
+        
+        // 3. Добавляем в company_users
+        const { error: companyUserError } = await supabase
+          .from('company_users')
+          .insert({
+            company_id: invitationData.company_id,
+            user_id: authData.user.id,
+            role: invitationData.role,
+            invited_by: invitationData.invited_by,
+            active: true
+          });
+        
+        if (companyUserError) throw companyUserError;
+        
+        // 4. Помечаем приглашение как принятое
+        const { error: updateError } = await supabase
+          .from('user_invitations')
+          .update({ accepted_at: new Date().toISOString() })
+          .eq('id', invitationData.id);
+        
+        if (updateError) throw updateError;
+        
+        showSuccess('Регистрация завершена! Перенаправление...');
+        
+        setTimeout(() => {
+          window.location.href = '/index.html';
+        }, 2000);
+        
+      } catch (err) {
+        showError('Ошибка: ' + err.message);
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Принять приглашение';
+      }
+    });
+    
+    function showError(msg) {
+      const el = document.getElementById('errorMessage');
+      el.textContent = msg;
+      el.style.display = 'block';
+      document.getElementById('loadingState').style.display = 'none';
+    }
+    
+    function showSuccess(msg) {
+      const el = document.getElementById('successMessage');
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+    
+    loadInvitation();
+  </script>
+</body>
+</html>
