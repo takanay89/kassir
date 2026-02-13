@@ -480,6 +480,11 @@ async function loadInitialData() {
       
       PRODUCTS_CACHE = products;
       window.PRODUCTS_CACHE = products;
+      
+      // Сортировка товаров по имени
+      PRODUCTS_CACHE.sort((a, b) => a.name.localeCompare(b.name));
+      window.PRODUCTS_CACHE = PRODUCTS_CACHE;
+      
       PAYMENT_METHODS = methods;
       window.PAYMENT_METHODS = methods;
       
@@ -499,9 +504,14 @@ async function loadInitialData() {
       if (currentSection === 'products') loadProductsTable();
       
     } catch (err) {
-      console.error('❌ Ошибка сервера, работаем с кешем:', err);
+      console.error('❌ Ошибка сервера:', error.message, error);
       PRODUCTS_CACHE = await getProductsFromLocal() || [];
       window.PRODUCTS_CACHE = PRODUCTS_CACHE;
+      
+      // Сортировка товаров по имени
+      PRODUCTS_CACHE.sort((a, b) => a.name.localeCompare(b.name));
+      window.PRODUCTS_CACHE = PRODUCTS_CACHE;
+      
       PAYMENT_METHODS = await getPaymentMethodsFromLocal() || [];
       window.PAYMENT_METHODS = PAYMENT_METHODS;
       console.log('📦 Из кеша PAYMENT_METHODS:', PAYMENT_METHODS);
@@ -512,6 +522,11 @@ async function loadInitialData() {
     // Offline режим - загружаем из кеша
     PRODUCTS_CACHE = await getProductsFromLocal() || [];
     window.PRODUCTS_CACHE = PRODUCTS_CACHE;
+    
+    // Сортировка товаров по имени
+    PRODUCTS_CACHE.sort((a, b) => a.name.localeCompare(b.name));
+    window.PRODUCTS_CACHE = PRODUCTS_CACHE;
+    
     PAYMENT_METHODS = await getPaymentMethodsFromLocal() || [];
     window.PAYMENT_METHODS = PAYMENT_METHODS;
     console.log('📦 Из кеша PAYMENT_METHODS:', PAYMENT_METHODS);
@@ -527,7 +542,7 @@ async function loadAllProductsFromServer() {
     console.warn('⚠️ Магазин не выбран, загружаем все товары без остатков');
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, sku, barcode, base_price, cost_price, type')
+      .select('id, name, sku, barcode, sale_price, purchase_price, type')
       .eq('company_id', COMPANY_ID)
       .eq('active', true)
       .order('name');
@@ -539,8 +554,8 @@ async function loadAllProductsFromServer() {
       name: p.name,
       sku: p.sku || '',
       barcode: p.barcode || '',
-      base_price: Number(p.base_price || 0),
-      cost_price: Number(p.cost_price || 0),
+      base_price: Number(p.sale_price || 0),
+      cost_price: Number(p.purchase_price || 0),
       quantity: 0,
       type: p.type || 'product'
     }));
@@ -557,13 +572,12 @@ async function loadAllProductsFromServer() {
         name,
         sku,
         barcode,
-        base_price,
-        cost_price,
+        sale_price,
+        purchase_price,
         type
       )
     `)
-    .eq('store_location_id', window.STORE_LOCATION_ID)
-    .order('products(name)');
+    .eq('store_location_id', window.STORE_LOCATION_ID);
   
   if (error) throw error;
 
@@ -576,8 +590,8 @@ async function loadAllProductsFromServer() {
       name: p.name,
       sku: p.sku || '',
       barcode: p.barcode || '',
-      base_price: Number(p.base_price || 0),
-      cost_price: Number(p.cost_price || 0),
+      base_price: Number(p.sale_price || 0),
+      cost_price: Number(p.purchase_price || 0),
       quantity: Number(pb.quantity || 0),  // ✅ Остаток ТОЛЬКО в текущем магазине
       type: p.type || 'product'
     };
