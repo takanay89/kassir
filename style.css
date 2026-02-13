@@ -2631,3 +2631,28 @@ body {
     height: 180px;
   }
 }
+
+/* =========================
+   MOBILE FIX
+========================= */
+@media (max-width: 768px) {
+
+  .main-layout {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+  }
+
+  .products-section {
+    order: 1;
+    max-height: 50vh;
+    overflow-y: auto;
+  }
+
+  .cart-section {
+    order: 2;
+    max-height: 40vh;
+    overflow-y: auto;
+  }
+
+}
