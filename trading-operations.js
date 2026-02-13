@@ -1150,6 +1150,9 @@ async function submitIncome() {
     await refreshProductsCache();
     
     // ✅ ИСПРАВЛЕНИЕ: перерисовываем список товаров после обновления кеша
+    if (window.renderProductsList) {
+      window.renderProductsList();
+    }
     if (window.renderIncomeProductsList) {
       window.renderIncomeProductsList();
     }
