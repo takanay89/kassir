@@ -3111,3 +3111,60 @@ body {
     flex-grow: 0 !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   ФИКС 3 — АКТИВНАЯ ВКЛАДКА MOBILE NAV (ЯДЕРНАЯ СИЛА)
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* Основной элемент - кнопка/div */
+  .mobile-nav .mobile-nav-item.active,
+  .mobile-nav button.active {
+    color: #3b82f6 !important;
+    font-weight: 700 !important;
+    position: relative !important;
+  }
+  
+  /* Верхний индикатор */
+  .mobile-nav .mobile-nav-item.active::before,
+  .mobile-nav button.active::before {
+    content: '' !important;
+    display: block !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 50px !important;
+    height: 4px !important;
+    background: #3b82f6 !important;
+    border-radius: 0 0 4px 4px !important;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.7) !important;
+    z-index: 10 !important;
+  }
+  
+  /* SVG и все вложенные элементы */
+  .mobile-nav .mobile-nav-item.active svg,
+  .mobile-nav .mobile-nav-item.active svg *,
+  .mobile-nav .mobile-nav-item.active .mobile-nav-icon,
+  .mobile-nav .mobile-nav-item.active .mobile-nav-icon *,
+  .mobile-nav button.active svg,
+  .mobile-nav button.active svg *,
+  .mobile-nav button.active path,
+  .mobile-nav button.active circle,
+  .mobile-nav button.active rect,
+  .mobile-nav button.active polyline,
+  .mobile-nav button.active line {
+    color: #3b82f6 !important;
+    stroke: #3b82f6 !important;
+    fill: #3b82f6 !important;
+    filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.8)) !important;
+  }
+  
+  /* Текстовые лейблы */
+  .mobile-nav .mobile-nav-item.active span,
+  .mobile-nav .mobile-nav-item.active .mobile-nav-label,
+  .mobile-nav button.active span,
+  .mobile-nav button.active .mobile-nav-label {
+    color: #3b82f6 !important;
+    font-weight: 700 !important;
+  }
+}
