@@ -1387,8 +1387,13 @@ async function refreshProductsCache() {
         }, 0) || 0
       }));
       console.log('✅ Кеш продуктов обновлён');
-    }
-  } catch (updateErr) {
+      console.log("REAL STOCK FROM DB:",
+  window.PRODUCTS_CACHE.map(p => ({
+    name: p.name,
+    qty: p.stock_quantity
+  }))
+);
+      } catch (updateErr) {
     console.warn('⚠️ Не удалось обновить кеш продуктов:', updateErr);
   }
 }
