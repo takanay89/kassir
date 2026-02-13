@@ -369,9 +369,25 @@
   };
 
   // Инициализация при загрузке
+  function waitForUserRole() {
+    // Ждём пока script.js установит USER_ROLE или таймаут 3 секунды
+    let attempts = 0;
+    const maxAttempts = 30; // 30 * 100ms = 3 секунды
+    
+    const checkInterval = setInterval(function() {
+      attempts++;
+      
+      // Если USER_ROLE установлен ИЛИ превышен таймаут - запускаем
+      if (window.USER_ROLE || attempts >= maxAttempts) {
+        clearInterval(checkInterval);
+        initMobileNav();
+      }
+    }, 100);
+  }
+  
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initMobileNav);
+    document.addEventListener('DOMContentLoaded', waitForUserRole);
   } else {
-    initMobileNav();
+    waitForUserRole();
   }
 })();
