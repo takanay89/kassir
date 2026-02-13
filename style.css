@@ -971,17 +971,41 @@ body {
 
 /* =============================================
    МОБИЛЬНЫЕ (до 768px)
-   ПРИНЦИП: sidebar физически превращается в
-   bottom nav. Никаких overlay, никаких новых
-   position:fixed поверх контента.
+   Sidebar → bottom nav. Чекбокс управляет
+   выдвижным меню "Ещё" через чистый CSS.
+   Никакого нового JS, никаких overlay.
    ============================================= */
+
+/* Чекбокс скрыт визуально но остаётся функциональным */
+.more-menu-checkbox {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  top: -9999px;
+}
+
 @media (max-width: 768px) {
 
-  /* ── 1. SIDEBAR → BOTTOM NAV ─────────────────
-     Sidebar перемещается вниз и становится
-     горизонтальной панелью. Высота строго 62px.
-     pointer-events: auto — явно разрешаем клики.
-  ─────────────────────────────────────────────── */
+  /* ─────────────────────────────────────────────
+     1. body — убираем горизонтальный скролл
+        ТОЛЬКО на body, не на html:
+        html{overflow:hidden} ломает position:fixed
+        в Safari/iOS и блокирует все клики.
+  ───────────────────────────────────────────── */
+  body {
+    overflow-x: hidden;
+  }
+
+  /* ─────────────────────────────────────────────
+     2. SIDEBAR → BOTTOM NAV
+        Sidebar фиксируется снизу, становится
+        горизонтальной полосой высотой 62px.
+        overflow: visible — критично: hidden
+        создаёт stacking context и блокирует
+        клики по контенту выше.
+  ───────────────────────────────────────────── */
   .sidebar {
     position: fixed;
     top: auto;
@@ -989,82 +1013,91 @@ body {
     left: 0;
     right: 0;
     width: 100%;
-    height: 62px;
-    min-height: 62px;
-    max-height: 62px;
-    flex-direction: row;
+    /* 62px + safe-area для iPhone с вырезом */
+    height: calc(62px + env(safe-area-inset-bottom, 0px));
+    min-height: calc(62px + env(safe-area-inset-bottom, 0px));
+    flex-direction: column;
     border-right: none;
-    border-top: 1px solid rgba(255, 255, 255, 0.12);
-    z-index: 1100;
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 500;
+    box-shadow: 0 -2px 16px rgba(0, 0, 0, 0.3);
+    /* overflow:visible чтобы "Ещё" меню выезжало вверх */
     overflow: visible;
     pointer-events: auto;
+    /* Нет transform, нет filter — не создаём stacking context */
   }
 
-  /* Скрываем логотип */
+  /* Логотип скрываем */
   .sidebar .sidebar-header {
     display: none;
   }
 
-  /* nav-menu → горизонтальный flex */
+  /* nav-menu — горизонтальный ряд кнопок.
+     position:relative — якорь для абсолютного попапа "Ещё".
+     overflow:visible — попап выезжает вверх за sidebar. */
   .sidebar .nav-menu {
     display: flex;
     flex-direction: row;
-    width: 100%;
-    padding: 0;
-    gap: 0;
     align-items: stretch;
+    position: relative;
+    width: 100%;
+    height: 62px;
+    padding: 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    gap: 0;
     overflow: visible;
   }
 
-  /* Каждый nav-item — равная доля, кликабельная зона */
-  .sidebar .nav-item {
+  /* Все nav-item в bottom nav */
+  .sidebar .nav-item,
+  .sidebar .nav-more-btn {
     flex: 1;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 3px;
-    padding: 6px 4px 5px;
+    gap: 4px;
+    padding: 8px 4px 6px;
     border-radius: 0;
     font-size: 10px;
     font-weight: 600;
-    height: 62px;
+    letter-spacing: 0.01em;
     min-height: 62px;
+    height: 62px;
     text-align: center;
     color: #64748b;
     background: transparent;
     border: none;
     border-top: 2px solid transparent;
+    /* Критично для работы тачей */
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
     cursor: pointer;
     pointer-events: auto;
-    /* Убираем transform чтобы не создавать stacking context */
+    /* Без transform — не создаём stacking context */
     transform: none;
-    position: static;
-  }
-
-  /* Разделители */
-  .sidebar .nav-item + .nav-item {
-    border-left: 1px solid rgba(255, 255, 255, 0.07);
+    position: relative;
+    display: flex;
+    text-decoration: none;
+    box-sizing: border-box;
   }
 
   /* Активная вкладка */
   .sidebar .nav-item.active {
     color: #60a5fa;
-    background: transparent;
+    background: rgba(59, 130, 246, 0.08);
     border-top: 2px solid #3b82f6;
   }
 
-  /* Тап-эффект только opacity, не transform */
-  .sidebar .nav-item:active {
-    opacity: 0.7;
+  /* Тап-эффект — только opacity, transform запрещён */
+  .sidebar .nav-item:active,
+  .sidebar .nav-more-btn:active {
+    opacity: 0.6;
   }
 
   /* SVG иконки */
   .sidebar .nav-icon-svg {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     flex-shrink: 0;
     display: block;
     pointer-events: none;
@@ -1077,20 +1110,162 @@ body {
     line-height: 1.2;
     text-align: center;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 72px;
+    pointer-events: none;
     flex: none;
+  }
+
+  /* ─────────────────────────────────────────────
+     3. PRIMARY / SECONDARY — разделение кнопок
+
+     .nav-menu — контейнер с position:relative.
+     Это единственный родитель для абсолютного
+     попапа. Sidebar имеет overflow:visible —
+     попап выезжает вверх за пределы sidebar.
+
+     [data-mobile-primary]  — 5 кнопок в баре
+     [data-mobile-secondary] — в попапе "Ещё"
+     .nav-more-btn — кнопка-триггер "Ещё"
+  ───────────────────────────────────────────── */
+
+  /* Secondary кнопки изъяты из потока nav-menu.
+     По умолчанию — скрыты, pointer-events:none —
+     не перехватывают клики по странице. */
+  .sidebar .nav-item[data-mobile-secondary] {
+    display: none;
     pointer-events: none;
   }
 
-  /* Скрываем пункты не входящие в основное меню */
-  .sidebar .nav-item[data-mobile-hidden="true"] {
-    display: none;
+  /* Кнопка "Ещё" — всегда видна, занимает 1 долю */
+  .sidebar .nav-more-btn {
+    display: flex;
+    flex: 1;
+    color: #64748b;
+    background: transparent;
+    border-top: 2px solid transparent;
   }
 
-  /* ── 2. ШАПКА И КОНТЕНТ ──────────────────────── */
+  /* ─────────────────────────────────────────────
+     4. ПОПАП "ЕЩЁ" — position:absolute внутри
+        .nav-menu { position:relative }.
 
+     ✅ absolute — не создаёт новый stacking context
+     ✅ остаётся внутри sidebar DOM-дерева
+     ✅ sidebar.overflow:visible — попап виден
+     ✅ никакого fixed на дочерних элементах
+     ✅ pointer-events:none когда скрыт
+
+     Попап — это псевдоэлемент ::before у .nav-menu
+     (фон + тень), а secondary кнопки абсолютны
+     внутри него через nth-child offset.
+
+     Архитектура:
+       .sidebar { position:fixed; overflow:visible }
+         .nav-menu { position:relative; overflow:visible }
+           .nav-item[secondary] { position:absolute;
+                                  bottom:100%; }
+  ───────────────────────────────────────────── */
+
+  /* Когда checkbox checked — показываем попап */
+
+  /* Фоновая панель попапа через ::before nav-menu */
+  .more-menu-checkbox:checked ~ .sidebar .nav-menu::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;          /* вплотную над bottom nav */
+    left: 0;
+    right: 0;
+    height: 72px;
+    background: #1e293b;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.5);
+    /* z-index ниже кнопок попапа, выше контента */
+    z-index: 1;
+  }
+
+  /* Тёмный полупрозрачный скрим за попапом —
+     через ::after nav-menu. Высота от верха экрана
+     до верхней границы попапа.
+     pointer-events:none — НЕ блокирует клики. */
+  .more-menu-checkbox:checked ~ .sidebar .nav-menu::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: calc(62px + 72px + env(safe-area-inset-bottom, 0px));
+    background: rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+    /* z-index ниже попапа, выше страницы */
+    z-index: 490;
+  }
+
+  /* Secondary кнопки: absolute внутри nav-menu,
+     выходят вверх через bottom:100%.
+     3 кнопки — по 33.33% ширины в ряд. */
+  .more-menu-checkbox:checked ~ .sidebar .nav-item[data-mobile-secondary] {
+    display: flex;
+    position: absolute;
+    bottom: 100%;          /* вплотную над bottom nav */
+    width: 33.33%;
+    height: 72px;
+    min-height: 72px;
+    padding: 12px 4px 10px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+    background: transparent;  /* фон даёт ::before */
+    border: none;
+    border-top: none;
+    border-right: 1px solid rgba(255, 255, 255, 0.07);
+    box-sizing: border-box;
+    pointer-events: auto;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    /* z-index выше фонового ::before */
+    z-index: 2;
+    /* Нет transform, нет filter */
+  }
+
+  /* Горизонтальные позиции трёх кнопок.
+     nth-child считает внутри .nav-menu:
+     1=trading, 2=products, 3=expenses,
+     4=money, 5=reports, 6=suppliers(secondary),
+     7=clients(secondary), 8=settings(secondary),
+     9=more-btn */
+  .more-menu-checkbox:checked ~ .sidebar .nav-item[data-mobile-secondary]:nth-child(6) {
+    left: 0;
+  }
+
+  .more-menu-checkbox:checked ~ .sidebar .nav-item[data-mobile-secondary]:nth-child(7) {
+    left: 33.33%;
+  }
+
+  .more-menu-checkbox:checked ~ .sidebar .nav-item[data-mobile-secondary]:nth-child(8) {
+    left: 66.67%;
+    border-right: none;
+  }
+
+  /* Тап-состояние secondary кнопок */
+  .more-menu-checkbox:checked ~ .sidebar .nav-item[data-mobile-secondary]:active {
+    color: #f1f5f9;
+    opacity: 0.7;
+  }
+
+  /* Кнопка "Ещё" подсвечивается когда попап открыт */
+  .more-menu-checkbox:checked ~ .sidebar .nav-more-btn {
+    color: #3b82f6;
+    border-top: 2px solid #3b82f6;
+    background: rgba(59, 130, 246, 0.08);
+  }
+
+  /* ─────────────────────────────────────────────
+     5. ШАПКА на всю ширину
+  ───────────────────────────────────────────── */
   .top-header {
     left: 0;
     padding: 0 16px;
@@ -1100,41 +1275,30 @@ body {
     display: none;
   }
 
-  /* main-content: отступ снизу = высота bottom nav */
+  /* ─────────────────────────────────────────────
+     6. MAIN CONTENT
+        margin-left:0 — sidebar больше не слева.
+        padding-bottom — пространство для bottom nav.
+        НЕ ставим overflow:hidden — это создаёт
+        stacking context и ломает position:fixed.
+  ───────────────────────────────────────────── */
   .main-content {
     margin-left: 0;
     margin-top: 96px;
-    padding: 12px 12px 74px;
+    padding: 12px 12px calc(70px + env(safe-area-inset-bottom, 0px));
     width: 100%;
-    /* НЕ ставим overflow-x: hidden здесь — это создаёт stacking context
-       и ломает position:fixed внутри */
     box-sizing: border-box;
     min-height: auto;
   }
 
-  /* ── 3. ГОРИЗОНТАЛЬНЫЙ СКРОЛЛ ────────────────────
-     Убираем только там где нужно, не на всём body.
-     body/html overflow-x:hidden ставим аккуратно —
-     только на body, не трогая html (иначе ломается
-     position:fixed в Safari).
-  ─────────────────────────────────────────────────── */
-  body {
-    overflow-x: hidden;
-  }
-
-  /* Таблицы оборачиваем скроллом */
-  .products-table-full,
-  .operations-table,
-  .cart-table,
-  .return-sales-table {
-    display: block;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+  /* Секции — не ограничиваем overflow:hidden */
+  .section {
     width: 100%;
   }
 
-  /* ── 4. КОНТЕНТНЫЕ ПРАВКИ ─────────────────────── */
-
+  /* ─────────────────────────────────────────────
+     7. КОНТЕНТНЫЕ ПРАВКИ
+  ───────────────────────────────────────────── */
   .section-title {
     font-size: 22px;
   }
@@ -1156,6 +1320,14 @@ body {
   .stats-grid {
     grid-template-columns: 1fr 1fr;
     gap: 10px;
+  }
+
+  .stat-card {
+    padding: 14px;
+  }
+
+  .stat-value {
+    font-size: 22px;
   }
 
   .product-row {
@@ -1189,29 +1361,29 @@ body {
     flex-shrink: 0;
   }
 
-  .stat-card {
-    padding: 14px;
-  }
-
-  .stat-value {
-    font-size: 22px;
-  }
-
   #tab-sale .products-grid {
     max-height: calc(100vh - 300px);
     min-height: 100px;
   }
 
-  /* ── 5. ЗОНЫ НАЖАТИЯ ─────────────────────────── */
-  button {
-    touch-action: manipulation;
-    min-height: 44px;
-  }
-
+  /* ─────────────────────────────────────────────
+     8. ЗОНЫ НАЖАТИЯ — минимум 50px
+        touch-action:manipulation убирает 300ms
+        задержку двойного тапа в старых браузерах.
+  ───────────────────────────────────────────── */
+  button,
   .tab-btn,
   .period-btn,
-  .payment-btn {
-    min-height: 44px;
+  .payment-btn,
+  select {
+    touch-action: manipulation;
+    min-height: 50px;
+  }
+
+  .btn-primary,
+  .btn-secondary,
+  .btn-sell {
+    min-height: 50px;
   }
 
   input[type="text"],
@@ -1220,32 +1392,81 @@ body {
   input[type="search"],
   .input {
     min-height: 48px;
-    /* 16px предотвращает авто-зум iOS */
+    /* 16px — предотвращает авто-зум на iOS */
     font-size: 16px;
   }
 
   .qty-btn,
   .cart-btn {
-    width: 40px;
-    height: 40px;
-    min-height: 40px;
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+    font-size: 18px;
   }
 
-  /* ── 6. TOAST — поднимаем над bottom nav ─────── */
+  /* ─────────────────────────────────────────────
+     9. ТАБЛИЦЫ — горизонтальный скролл внутри
+        Каждую таблицу делаем block+overflow:auto,
+        а не ломаем весь layout через body/html.
+  ───────────────────────────────────────────── */
+  .products-table-full,
+  .operations-table,
+  .cart-table,
+  .return-sales-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+
+  /* ─────────────────────────────────────────────
+     10. TOAST — поднимаем выше bottom nav
+  ───────────────────────────────────────────── */
   .toast {
-    bottom: 74px;
+    bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+    right: 12px;
+    left: 12px;
+    text-align: center;
   }
 
-  /* ── 7. МОДАЛКИ — выше bottom nav ───────────────
-     Модалки должны быть выше 1100 (z-index sidebar).
-     Они уже имеют z-index: 9999, но явно фиксируем.
-  ─────────────────────────────────────────────────── */
+  /* ─────────────────────────────────────────────
+     11. МОДАЛКИ — поверх bottom nav (z-index > 500)
+  ───────────────────────────────────────────── */
   .modal {
     z-index: 9999;
   }
 
   .success-modal-overlay {
     z-index: 10000;
+  }
+
+  #barcodeScannerModal {
+    z-index: 10000;
+  }
+
+  /* Вкладки — горизонтальный скролл */
+  .trading-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .trading-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab-btn {
+    flex-shrink: 0;
+    min-height: 50px;
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+
+  .stats-mini {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
   }
 }
 
@@ -1261,7 +1482,7 @@ body {
   }
 
   .main-content {
-    padding: 10px 10px 74px;
+    padding: 10px 10px calc(70px + env(safe-area-inset-bottom, 0px));
   }
 
   .section-header {
@@ -1320,9 +1541,13 @@ body {
     grid-template-columns: 1fr;
   }
 
-  /* Подписи nav чуть меньше */
   .sidebar .nav-label {
     font-size: 9px;
+  }
+
+  .sidebar .nav-icon-svg {
+    width: 20px;
+    height: 20px;
   }
 }
 
@@ -1762,32 +1987,7 @@ body {
   transform: translateY(0);
 }
 
-/* ===== АДАПТИВ ДЛЯ ВКЛАДОК ===== */
-@media (max-width: 768px) {
-  .trading-tabs {
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    padding-bottom: 4px;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-
-  .trading-tabs::-webkit-scrollbar {
-    display: none;
-  }
-
-  .tab-btn {
-    flex-shrink: 0;
-    padding: 10px 16px;
-    font-size: 13px;
-    min-height: 44px;
-  }
-
-  .stats-mini {
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-}
+/* ===== АДАПТИВ ДЛЯ ВКЛАДОК — обработан в основном @media блоке выше ===== */
 
 /* ===== ТАБЛИЦА ОПЕРАЦИЙ ===== */
 .operations-table {
@@ -2852,45 +3052,6 @@ body {
     max-width: 100%;
   }
   
-  .scanner-frame {
-    width: 85%;
-    height: 180px;
-  }
-}
-/* =============================================
-   MOBILE BOTTOM NAV — дополнительные правила
-   (scanner, иконки, safe area)
-   ============================================= */
-
-/* Safe area для iPhone с чёлкой */
-@supports (padding-bottom: env(safe-area-inset-bottom)) {
-  @media (max-width: 768px) {
-    .sidebar {
-      padding-bottom: env(safe-area-inset-bottom);
-      height: calc(62px + env(safe-area-inset-bottom));
-      max-height: calc(62px + env(safe-area-inset-bottom));
-    }
-    .main-content {
-      padding-bottom: calc(74px + env(safe-area-inset-bottom));
-    }
-    .toast {
-      bottom: calc(74px + env(safe-area-inset-bottom));
-    }
-  }
-}
-
-/* Scanner modal всегда поверх всего */
-#barcodeScannerModal {
-  z-index: 10000;
-}
-
-@media (max-width: 768px) {
-  .scanner-container {
-    max-width: 100%;
-  }
-  .scanner-viewport {
-    max-width: 100%;
-  }
   .scanner-frame {
     width: 85%;
     height: 180px;
