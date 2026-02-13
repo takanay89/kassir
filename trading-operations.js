@@ -4,6 +4,7 @@
 
 import { supabase } from './supabaseClient.js';
 import { getNetworkStatus } from './sync.js';
+import { saveProductsToLocal } from './db.js';
 import { 
   getCurrentState, 
   setCurrentTab, 
@@ -218,7 +219,7 @@ async function loadSalesStats() {
       .select(`
         id, 
         total_amount, 
-        operation_at, 
+        created_at, 
         payment_method,
         sale_items (
           product_id,
@@ -228,10 +229,10 @@ async function loadSalesStats() {
       `)
       .eq('company_id', window.COMPANY_ID)
       .eq('status', 'completed')
-      .gte('operation_at', startDate)
-      .lte('operation_at', endDate)
+      .gte('created_at', startDate)
+      .lte('created_at', endDate)
       .is('deleted_at', null)
-      .order('operation_at', { ascending: false });
+      .order('created_at', { ascending: false });
     
     if (error) {
       console.error('Error loading sales stats:', error);
@@ -312,7 +313,7 @@ function renderSalesOperations(sales) {
               <td>${products}</td>
               <td>${paymentMethodName}</td>
               <td>${window.formatMoney(sale.total_amount)}</td>
-              <td>${window.formatDate(sale.operation_at)}</td>
+              <td>${window.formatDate(sale.created_at)}</td>
               ${canDelete ? `<td><button class="btn-delete-mini" onclick="deleteSaleOperation('${sale.id}')" title="Удалить">×</button></td>` : ''}
             </tr>
           `;
@@ -439,7 +440,7 @@ async function loadReturnStats() {
       .select(`
         id, 
         total_amount, 
-        operation_at, 
+        created_at, 
         related_sale_id,
         sale_items (
           product_id,
@@ -450,10 +451,10 @@ async function loadReturnStats() {
       .eq('company_id', window.COMPANY_ID)
       .eq('status', 'completed')
       .not('related_sale_id', 'is', null)
-      .gte('operation_at', startDate)
-      .lte('operation_at', endDate)
+      .gte('created_at', startDate)
+      .lte('created_at', endDate)
       .is('deleted_at', null)
-      .order('operation_at', { ascending: false });
+      .order('created_at', { ascending: false });
     
     if (error) {
       console.error('Error loading return stats:', error);
@@ -529,7 +530,7 @@ function renderReturnOperations(returns) {
               <td>${products}</td>
               <td>${barcodes}</td>
               <td>${window.formatMoney(Math.abs(ret.total_amount))}</td>
-              <td>${window.formatDate(ret.operation_at)}</td>
+              <td>${window.formatDate(ret.created_at)}</td>
               ${canDelete ? `<td><button class="btn-delete-mini" onclick="deleteReturnOperation('${ret.id}')" title="Удалить">×</button></td>` : ''}
             </tr>
           `;
@@ -551,7 +552,7 @@ async function loadRecentSalesForReturn() {
       .select(`
         id, 
         total_amount, 
-        operation_at,
+        created_at,
         payment_method,
         payment_methods (name),
         sale_items (
@@ -565,10 +566,10 @@ async function loadRecentSalesForReturn() {
       `)
       .eq('company_id', window.COMPANY_ID)
       .eq('status', 'completed')
-      .gte('operation_at', thirtyDaysAgo.toISOString())
+      .gte('created_at', thirtyDaysAgo.toISOString())
       .is('deleted_at', null)
       .is('related_sale_id', null)   // только оригинальные продажи (не возвраты)
-      .order('operation_at', { ascending: false })
+      .order('created_at', { ascending: false })
       .limit(50);
     
     if (error) throw error;
@@ -628,7 +629,7 @@ function renderRecentSales(sales) {
           const paymentName = sale.payment_methods?.name || '—';
           return `
             <tr>
-              <td class="col-date">${window.formatDate(sale.operation_at)}</td>
+              <td class="col-date">${window.formatDate(sale.created_at)}</td>
               <td class="col-items"><span class="cell-truncate">${itemsText}</span></td>
               <td class="col-payment">${paymentName}</td>
               <td class="col-amount">${window.formatMoney(sale.total_amount)}</td>
@@ -657,7 +658,7 @@ window.searchRecentSales = function() {
   const filtered = RECENT_SALES_CACHE.filter(sale => {
     if (!sale.sale_items || !sale.sale_items.length) return false;
     
-    const dateStr = window.formatDate(sale.operation_at).toLowerCase();
+    const dateStr = window.formatDate(sale.created_at).toLowerCase();
     const amountStr = String(sale.total_amount).toLowerCase();
     
     const hasMatchingItem = sale.sale_items.some(item => {
@@ -697,7 +698,7 @@ window.selectSaleForReturn = function(saleId) {
   const searchCard = document.getElementById('returnSearchCard');
   if (banner && infoEl) {
     const itemsText = sale.sale_items.map(i => i.products?.name || 'Товар').join(', ');
-    const date = window.formatDate ? window.formatDate(sale.operation_at) : sale.operation_at;
+    const date = window.formatDate ? window.formatDate(sale.created_at) : sale.created_at;
     infoEl.textContent = `${date} · ${window.formatMoney(sale.total_amount)} · ${itemsText}`;
     banner.style.display = 'block';
   }
@@ -985,17 +986,6 @@ async function submitSale() {
 
     console.log("ITEMS FOR RPC:", items);
 
-    const operationInput = document.getElementById('operationTimeInput');
-    let operationAt = null;
-    if (operationInput?.value) {
-      // datetime-local возвращает "2026-02-01T10:30"
-      // Нужно преобразовать в ISO с timezone: "2026-02-01T10:30:00Z"
-      operationAt = new Date(operationInput.value).toISOString();
-    }
-    console.log("🕐 operationInput:", operationInput);
-    console.log("🕐 operationInput.value:", operationInput?.value);
-    console.log("🕐 operationAt (ISO):", operationAt);
-
     // Вызываем атомарную RPC функцию
     const { data, error } = await supabase.rpc('process_sale', {
       p_company_id:        window.COMPANY_ID,
@@ -1005,8 +995,7 @@ async function submitSale() {
       p_customer_id:       state.selectedClientId || null,
       p_comment:           comment,
       p_items:             items,
-      p_warehouse_id:      null,
-      p_operation_at:      operationAt
+      p_warehouse_id:      null
     });
     
     if (error) throw error;
@@ -1025,8 +1014,10 @@ async function submitSale() {
     await loadSalesStats();
     await refreshProductsCache();
     
-    // Перерисовываем каталог товаров с обновлёнными остатками
-    window.renderProductsList && window.renderProductsList();
+    // ✅ ИСПРАВЛЕНИЕ: перерисовываем список товаров после обновления кеша
+    if (window.renderProductsList) {
+      window.renderProductsList();
+    }
     
   } catch (err) {
     console.error('SALE ERROR FULL:', err);
@@ -1158,6 +1149,11 @@ async function submitIncome() {
     await loadIncomeStats();
     await refreshProductsCache();
     
+    // ✅ ИСПРАВЛЕНИЕ: перерисовываем список товаров после обновления кеша
+    if (window.renderIncomeProductsList) {
+      window.renderIncomeProductsList();
+    }
+    
   } catch (err) {
     console.error('Income error:', err);
     window.showToast('❌ Ошибка: ' + err.message);
@@ -1234,6 +1230,11 @@ async function submitReturn() {
     await loadRecentSalesForReturn();
     await refreshProductsCache();
     
+    // ✅ ИСПРАВЛЕНИЕ: перерисовываем список товаров после обновления кеша
+    if (window.renderProductsList) {
+      window.renderProductsList();
+    }
+    
   } catch (err) {
     console.error('RETURN ERROR:', err);
     window.showToast('❌ Ошибка: ' + (err.message || 'Неизвестная ошибка'), 'error');
@@ -1296,6 +1297,11 @@ async function submitWriteoff() {
     await loadWriteoffStats();
     await refreshProductsCache();
     
+    // ✅ ИСПРАВЛЕНИЕ: перерисовываем список товаров после обновления кеша
+    if (window.renderWriteoffProductsList) {
+      window.renderWriteoffProductsList();
+    }
+    
   } catch (err) {
     console.error('WRITEOFF ERROR:', err);
     showOperationErrorModal('Ошибка списания', err.message || 'Неизвестная ошибка');
@@ -1353,6 +1359,11 @@ async function submitSupplierReturn() {
     await loadSupplierReturnStats();
     await refreshProductsCache();
     
+    // ✅ ИСПРАВЛЕНИЕ: перерисовываем список товаров после обновления кеша
+    if (window.renderSupplierReturnProductsList) {
+      window.renderSupplierReturnProductsList();
+    }
+    
   } catch (err) {
     console.error('SUPPLIER RETURN ERROR:', err);
     showOperationErrorModal('Ошибка возврата поставщику', err.message || 'Неизвестная ошибка');
@@ -1367,35 +1378,57 @@ async function submitSupplierReturn() {
 // =============================================
 async function refreshProductsCache() {
   try {
-    const { data: freshProducts, error: productsError } = await supabase
-      .from('products')
-      .select(`
-        id, name, sale_price, purchase_price, sku, barcode, type,
-        product_balances (quantity, store_location_id, warehouse_id)
-      `)
-      .eq('company_id', window.COMPANY_ID)
-      .eq('active', true);
+    // ✅ КРИТИЧНО: грузим ТОЛЬКО остатки текущего магазина из product_balances
+    if (!window.STORE_LOCATION_ID) {
+      console.warn('⚠️ Магазин не выбран при refresh');
+      return;
+    }
     
-    if (!productsError && freshProducts) {
-      window.PRODUCTS_CACHE = freshProducts.map(product => ({
-        ...product,
-        stock_quantity: product.product_balances?.reduce((sum, b) => {
-          if (window.STORE_LOCATION_ID) {
-            return sum + (b.store_location_id === window.STORE_LOCATION_ID ? Number(b.quantity || 0) : 0);
-          }
-          return sum + Number(b.quantity || 0);
-        }, 0) || 0
-      }));
-      console.log('✅ Кеш продуктов обновлён');
-      console.log("REAL STOCK FROM DB:",
-  window.PRODUCTS_CACHE.map(p => ({
-    name: p.name,
-    qty: p.stock_quantity
-  }))
-);
-      alert("CACHE REFRESHED");
-
-      } catch (updateErr) {
+    const { data, error } = await supabase
+      .from('product_balances')
+      .select(`
+        quantity,
+        product_id,
+        products!inner (
+          id,
+          name,
+          sku,
+          barcode,
+          base_price,
+          cost_price,
+          type
+        )
+      `)
+      .eq('store_location_id', window.STORE_LOCATION_ID)
+      .order('products(name)');
+    
+    if (error) throw error;
+    
+    if (data) {
+      window.PRODUCTS_CACHE = data.map(pb => {
+        const p = pb.products;
+        return {
+          id: p.id,
+          name: p.name,
+          sku: p.sku || '',
+          barcode: p.barcode || '',
+          base_price: Number(p.base_price || 0),
+          cost_price: Number(p.cost_price || 0),
+          quantity: Number(pb.quantity || 0),  // ✅ Остаток ТОЛЬКО в текущем магазине
+          type: p.type || 'product'
+        };
+      });
+      
+      // ✅ ИСПРАВЛЕНИЕ: сохраняем в IndexedDB чтобы при перезагрузке были актуальные данные
+      try {
+        await saveProductsToLocal(window.PRODUCTS_CACHE);
+      } catch (dbErr) {
+        console.warn('⚠️ Не удалось сохранить в IndexedDB:', dbErr);
+      }
+      
+      console.log('✅ Кеш обновлён (store:', window.STORE_LOCATION_ID, ', товаров:', data.length, ')');
+    }
+  } catch (updateErr) {
     console.warn('⚠️ Не удалось обновить кеш продуктов:', updateErr);
   }
 }
