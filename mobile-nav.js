@@ -50,46 +50,69 @@
     };
     const allowedSections = ROLE_PERMISSIONS[userRole] || ROLE_PERMISSIONS['cashier'];
 
+    // Формируем кнопки только для разрешённых разделов
+    const buttons = [];
+    
+    if (allowedSections.includes('trading')) {
+      buttons.push(`
+        <button class="mobile-nav-item ${buttons.length === 0 ? 'active' : ''}" data-section="trading">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+          </svg>
+          <span>Касса</span>
+        </button>
+      `);
+    }
+    
+    if (allowedSections.includes('products')) {
+      buttons.push(`
+        <button class="mobile-nav-item ${buttons.length === 0 ? 'active' : ''}" data-section="products">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+          </svg>
+          <span>Склад</span>
+        </button>
+      `);
+    }
+    
+    if (allowedSections.includes('expenses')) {
+      buttons.push(`
+        <button class="mobile-nav-item ${buttons.length === 0 ? 'active' : ''}" data-section="expenses">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+          <span>Расходы</span>
+        </button>
+      `);
+    }
+    
+    if (allowedSections.includes('money')) {
+      buttons.push(`
+        <button class="mobile-nav-item ${buttons.length === 0 ? 'active' : ''}" data-section="money">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+          </svg>
+          <span>Деньги</span>
+        </button>
+      `);
+    }
+    
+    if (allowedSections.includes('reports')) {
+      buttons.push(`
+        <button class="mobile-nav-item ${buttons.length === 0 ? 'active' : ''}" data-section="reports">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+            <line x1="6" y1="20" x2="6" y2="14"/>
+          </svg>
+          <span>Отчёты</span>
+        </button>
+      `);
+    }
+
     const nav = document.createElement('div');
     nav.className = 'mobile-bottom-nav';
-    nav.innerHTML = `
-      ${allowedSections.includes('trading') ? `<button class="mobile-nav-item active" data-section="trading">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
-          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
-        </svg>
-        <span>Касса</span>
-      </button>
-      
-      <button class="mobile-nav-item" data-section="products">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-        </svg>
-        <span>Склад</span>
-      </button>
-      
-      <button class="mobile-nav-item" data-section="expenses">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-        </svg>
-        <span>Расходы</span>
-      </button>
-      
-      <button class="mobile-nav-item" data-section="money">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>
-        </svg>
-        <span>Деньги</span>
-      </button>
-      
-      <button class="mobile-nav-item" data-section="reports">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
-          <line x1="6" y1="20" x2="6" y2="14"/>
-        </svg>
-        <span>Отчёты</span>
-      </button>
-    `;
+    nav.innerHTML = buttons.join('');
 
     document.body.appendChild(nav);
 
@@ -134,6 +157,62 @@
   function createDrawer() {
     if (document.querySelector('.mobile-drawer-overlay')) return;
 
+    // Проверяем роли для drawer
+    const userRole = window.USER_ROLE || 'cashier';
+    const ROLE_PERMISSIONS = {
+      owner:      ['trading', 'products', 'suppliers', 'clients', 'expenses', 'reports', 'money', 'settings'],
+      admin:      ['trading', 'products', 'suppliers', 'clients', 'expenses', 'reports', 'money', 'settings'],
+      manager:    ['trading', 'products', 'suppliers', 'clients', 'expenses', 'reports', 'money'],
+      cashier:    ['trading', 'clients'],
+      warehouse:  ['products', 'suppliers'],
+      accountant: ['expenses', 'reports', 'money'],
+      seller:     ['trading', 'clients'],
+    };
+    const allowedSections = ROLE_PERMISSIONS[userRole] || ROLE_PERMISSIONS['cashier'];
+
+    // Формируем пункты меню
+    const menuItems = [];
+    
+    if (allowedSections.includes('clients')) {
+      menuItems.push(`
+        <button class="mobile-drawer-item" data-section="clients">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          <span>Клиенты</span>
+        </button>
+      `);
+    }
+    
+    if (allowedSections.includes('suppliers')) {
+      menuItems.push(`
+        <button class="mobile-drawer-item" data-section="suppliers">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+            <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+          </svg>
+          <span>Поставщики</span>
+        </button>
+      `);
+    }
+    
+    if (allowedSections.includes('settings')) {
+      if (menuItems.length > 0) {
+        menuItems.push(`<div class="mobile-drawer-divider"></div>`);
+      }
+      menuItems.push(`
+        <button class="mobile-drawer-item" data-section="settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"/>
+          </svg>
+          <span>Настройки</span>
+        </button>
+      `);
+    }
+
     // Overlay
     const overlay = document.createElement('div');
     overlay.className = 'mobile-drawer-overlay';
@@ -149,32 +228,7 @@
       </div>
       
       <div class="mobile-drawer-menu">
-        <button class="mobile-drawer-item" data-section="clients">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-            <circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-          </svg>
-          <span>Клиенты</span>
-        </button>
-        
-        <button class="mobile-drawer-item" data-section="suppliers">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
-            <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
-          </svg>
-          <span>Поставщики</span>
-        </button>
-        
-        <div class="mobile-drawer-divider"></div>
-        
-        <button class="mobile-drawer-item" data-section="settings">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"/>
-          </svg>
-          <span>Настройки</span>
-        </button>
+        ${menuItems.join('')}
       </div>
     `;
 
@@ -300,6 +354,9 @@
 
     // Разблокируем скролл
     document.body.style.overflow = '';
+    
+    // Убираем класс
+    document.body.classList.remove('mobile-nav-loaded');
   }
 
   // Экспортируем функции в window для возможного использования
