@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#0f172a">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
@@ -1449,6 +1449,28 @@
           .catch(err => console.log('❌ Service Worker ошибка:', err));
       });
     }
+
+    // СИНХРОНИЗАЦИЯ МОБИЛЬНОЙ НАВИГАЦИИ
+    (function() {
+      function syncMobileNav() {
+        const active = document.querySelector('.section.active');
+        if (!active) return;
+
+        const name = active.id.replace('section-', '');
+
+        document.querySelectorAll('.mobile-nav-item').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.section === name);
+        });
+      }
+
+      const observer = new MutationObserver(syncMobileNav);
+
+      document.querySelectorAll('.section').forEach(s => {
+        observer.observe(s, { attributes: true, attributeFilter: ['class'] });
+      });
+
+      document.addEventListener('DOMContentLoaded', syncMobileNav);
+    })();
   </script>
 
   <!-- MODAL: EXCEL IMPORT PREVIEW -->
