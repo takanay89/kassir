@@ -376,7 +376,7 @@ async function processImportRow(row) {
 
     const { data: product, error: pErr } = await supabase
       .from('products')
-      .insert({
+      .upsert({
         company_id:     companyId,
         name:           row.name,
         sku,
@@ -387,6 +387,9 @@ async function processImportRow(row) {
         unit:           row.unit || 'шт',
         comment:        row.comment || null,
         active:         true,
+        updated_at:     new Date().toISOString(),
+      }, {
+        onConflict: 'company_id,sku'
       })
       .select('id')
       .single();
