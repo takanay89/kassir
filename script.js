@@ -3265,6 +3265,8 @@ window.switchProductsTab = function(tabName) {
     loadIncomeTable();
   } else if (tabName === 'transfer') {
     loadTransferTab();
+  } else if (tabName === 'warehouse') {
+    loadWarehouseTab();
   }
 };
 
@@ -3973,3 +3975,122 @@ document.getElementById('executeTransferBtn')?.addEventListener('click', async (
     btn.textContent = originalText;
   }
 });
+
+// =============================================
+// ОСНОВНОЙ СКЛАД - ПРОСМОТР ТОВАРОВ
+// =============================================
+let WAREHOUSE_PRODUCTS_CACHE = [];
+
+async function loadWarehouseTab() {
+  await loadWarehouseProducts();
+  renderWarehouseProductsList();
+}
+
+async function loadWarehouseProducts() {
+  if (!window.COMPANY_ID) {
+    console.warn("⚠️ COMPANY_ID не установлен");
+    return;
+  }
+  
+  if (!window.WAREHOUSE_CACHE) {
+    console.warn("⚠️ WAREHOUSE_CACHE не установлен");
+    WAREHOUSE_PRODUCTS_CACHE = [];
+    renderWarehouseProductsList();
+    return;
+  }
+  
+  try {
+    const { data, error } = await supabase
+      .from("product_balances")
+      .select(`
+        quantity,
+        updated_at,
+        product_id,
+        products!inner (
+          id,
+          name,
+          sku
+        )
+      `)
+      .eq("warehouse_id", window.WAREHOUSE_CACHE)
+      .is("store_location_id", null)
+      .order("updated_at", { ascending: false });
+    
+    if (error) throw error;
+    
+    WAREHOUSE_PRODUCTS_CACHE = (data || []).map(pb => ({
+      id: pb.products.id,
+      name: pb.products.name,
+      sku: pb.products.sku || "",
+      quantity: Number(pb.quantity || 0),
+      updated_at: pb.updated_at
+    }));
+    
+    console.log("✅ Товары склада загружены:", WAREHOUSE_PRODUCTS_CACHE.length);
+    
+  } catch (err) {
+    console.error("❌ Ошибка загрузки товаров склада:", err);
+    WAREHOUSE_PRODUCTS_CACHE = [];
+  }
+}
+
+function renderWarehouseProductsList() {
+  const container = document.getElementById("warehouseProductsTable");
+  if (!container) return;
+  
+  const searchTerm = (document.getElementById("warehouseSearchInput")?.value || "").toLowerCase();
+  
+  const filtered = WAREHOUSE_PRODUCTS_CACHE.filter(p => {
+    if (!searchTerm) return true;
+    return (
+      (p.name || "").toLowerCase().includes(searchTerm) ||
+      (p.sku || "").toLowerCase().includes(searchTerm)
+    );
+  });
+  
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div style="text-align:center;padding:40px;color:var(--text-secondary);">
+        ${WAREHOUSE_PRODUCTS_CACHE.length === 0 ? "Нет товаров на складе" : "Ничего не найдено"}
+      </div>
+    `;
+    return;
+  }
+  
+  container.innerHTML = `
+    <table class="products-table-full">
+      <thead>
+        <tr style="background:var(--bg-secondary);color:var(--text-secondary);">
+          <th style="text-align:left;padding:10px;">Название</th>
+          <th style="text-align:left;padding:10px;width:120px;">Артикул</th>
+          <th style="text-align:right;padding:10px;width:100px;">Остаток</th>
+          <th style="text-align:center;padding:10px;width:160px;">Обновлено</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${filtered.map(p => `
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:10px;">
+              <div style="font-weight:600;">${p.name}</div>
+            </td>
+            <td style="padding:10px;color:var(--text-secondary);">${p.sku}</td>
+            <td style="padding:10px;text-align:right;font-weight:600;">${p.quantity}</td>
+            <td style="padding:10px;text-align:center;color:var(--text-secondary);font-size:13px;">
+              ${p.updated_at ? new Date(p.updated_at).toLocaleString("ru-RU", {
+                day: "2-digit",
+                month: "2-digit", 
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit"
+              }) : "-"}
+            </td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+window.filterWarehouseProducts = function() {
+  renderWarehouseProductsList();
+};
