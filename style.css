@@ -1,3 +1,18 @@
+html {
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+body {
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+input, textarea {
+  -webkit-user-select: text;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -2421,6 +2436,29 @@ body {
     padding: 6px 12px;
     font-size: 12px;
     white-space: nowrap;
+  }
+  
+  /* === ИСПРАВЛЕНИЕ НАКЛАДЫВАНИЯ ЭЛЕМЕНТОВ === */
+  .top-header {
+    height: auto !important;
+    min-height: 56px !important;
+    padding: 8px 12px !important;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .store-info {
+    width: 100%;
+    order: 1;
+  }
+
+  .user-profile {
+    width: 100%;
+    order: 2;
+    justify-content: space-between;
+    margin-top: 4px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
   }
   
   /* === MAIN CONTENT === */
