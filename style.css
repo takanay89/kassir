@@ -839,10 +839,14 @@ body {
   opacity: 0;
   transition: all 0.3s;
   z-index: 10000;
+  /* Скрытый toast не должен перехватывать клики */
+  pointer-events: none;
 }
 
 .toast.show {
   transform: translateY(0);
+  pointer-events: auto;
+}
   opacity: 1;
 }
 
@@ -1019,7 +1023,8 @@ body {
     flex-direction: column;
     border-right: none;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
-    z-index: 500;
+    /* Выше status-bar(1000) и top-header(999) — иначе они перекрывают bottom nav */
+    z-index: 1050;
     box-shadow: 0 -2px 16px rgba(0, 0, 0, 0.3);
     /* overflow:visible чтобы "Ещё" меню выезжало вверх */
     overflow: visible;
@@ -3027,11 +3032,13 @@ body {
   z-index: 10001;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
   opacity: 0;
+  pointer-events: none;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .toast-notification.show {
   opacity: 1;
+  pointer-events: auto;
   transform: translateX(-50%) translateY(0);
 }
 
