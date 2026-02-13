@@ -1136,6 +1136,10 @@ window.showSection = function(name) {
     highlightSelectedStore();
     if (typeof window.onShowSettings === 'function') window.onShowSettings();
   }
+
+  // mobile nav sync
+  document.querySelectorAll('.mobile-nav-item')
+    .forEach(b => b.classList.toggle('active', b.dataset.section === name));
 };
 
 // Права доступа по разделам
