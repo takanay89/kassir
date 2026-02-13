@@ -316,6 +316,9 @@
         <button class="tab-btn" data-tab="transfer" onclick="switchProductsTab('transfer')">
           ПЕРЕМЕЩЕНИЕ
         </button>
+        <button class="tab-btn" data-tab="warehouse" onclick="switchProductsTab('warehouse')">
+          ОСНОВНОЙ СКЛАД
+        </button>
       </div>
 
       <!-- Контент вкладок -->
@@ -478,6 +481,35 @@
             <button id="executeTransferBtn" class="btn-primary" style="width:100%;padding:14px;font-size:16px;font-weight:600;" disabled>
               Выполнить перемещение
             </button>
+          </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════════════ -->
+        <!-- TAB 5: ОСНОВНОЙ СКЛАД (Просмотр товаров на складе) -->
+        <!-- ═══════════════════════════════════════════════════════════════════ -->
+        <div class="trading-tab-content" id="tab-warehouse">
+          <div class="card">
+            <div class="card-title">📦 Основной склад</div>
+            
+            <!-- Информационная панель -->
+            <div style="padding:0 0 16px 0;margin-bottom:16px;">
+              <div>
+                <div style="font-weight:600;color:#e2e8f0;font-size:15px;">Товары на основном складе</div>
+                <div style="font-size:13px;color:#94a3b8;margin-top:2px;">Просмотр остатков товаров, которые находятся на складе (не распределены по магазинам)</div>
+              </div>
+            </div>
+
+            <!-- Поиск -->
+            <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
+              <input type="text" id="warehouseSearchInput" class="input" placeholder="🔍 Поиск по названию, артикулу..." oninput="filterWarehouseProducts()" style="flex:1;">
+            </div>
+            
+            <!-- Таблица товаров склада -->
+            <div id="warehouseProductsTable" class="products-table">
+              <div style="text-align:center;padding:40px;color:#9ca3af;font-size:14px;">
+                Загрузка товаров...
+              </div>
+            </div>
           </div>
         </div>
 
