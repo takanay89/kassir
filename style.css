@@ -964,47 +964,176 @@ body {
   }
   
   .right-panel {
-    position: sticky;
-    bottom: 0;
-    background: var(--bg-primary);
+    position: static;
     padding-top: 12px;
   }
 }
 
-/* МОБИЛЬНЫЕ (до 768px) — sidebar остаётся, bottom nav перекрывает */
+/* =============================================
+   МОБИЛЬНЫЕ (до 768px)
+   ПРИНЦИП: sidebar физически превращается в
+   bottom nav. Никаких overlay, никаких новых
+   position:fixed поверх контента.
+   ============================================= */
 @media (max-width: 768px) {
-  /* Sidebar скрываем — навигация переедет вниз */
+
+  /* ── 1. SIDEBAR → BOTTOM NAV ─────────────────
+     Sidebar перемещается вниз и становится
+     горизонтальной панелью. Высота строго 62px.
+     pointer-events: auto — явно разрешаем клики.
+  ─────────────────────────────────────────────── */
   .sidebar {
-    display: none !important;
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 62px;
+    min-height: 62px;
+    max-height: 62px;
+    flex-direction: row;
+    border-right: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    z-index: 1100;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+    overflow: visible;
+    pointer-events: auto;
   }
 
-  /* Шапка на всю ширину */
+  /* Скрываем логотип */
+  .sidebar .sidebar-header {
+    display: none;
+  }
+
+  /* nav-menu → горизонтальный flex */
+  .sidebar .nav-menu {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    padding: 0;
+    gap: 0;
+    align-items: stretch;
+    overflow: visible;
+  }
+
+  /* Каждый nav-item — равная доля, кликабельная зона */
+  .sidebar .nav-item {
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 6px 4px 5px;
+    border-radius: 0;
+    font-size: 10px;
+    font-weight: 600;
+    height: 62px;
+    min-height: 62px;
+    text-align: center;
+    color: #64748b;
+    background: transparent;
+    border: none;
+    border-top: 2px solid transparent;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    cursor: pointer;
+    pointer-events: auto;
+    /* Убираем transform чтобы не создавать stacking context */
+    transform: none;
+    position: static;
+  }
+
+  /* Разделители */
+  .sidebar .nav-item + .nav-item {
+    border-left: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  /* Активная вкладка */
+  .sidebar .nav-item.active {
+    color: #60a5fa;
+    background: transparent;
+    border-top: 2px solid #3b82f6;
+  }
+
+  /* Тап-эффект только opacity, не transform */
+  .sidebar .nav-item:active {
+    opacity: 0.7;
+  }
+
+  /* SVG иконки */
+  .sidebar .nav-icon-svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    display: block;
+    pointer-events: none;
+  }
+
+  /* Подписи */
+  .sidebar .nav-label {
+    display: block;
+    font-size: 10px;
+    line-height: 1.2;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 72px;
+    flex: none;
+    pointer-events: none;
+  }
+
+  /* Скрываем пункты не входящие в основное меню */
+  .sidebar .nav-item[data-mobile-hidden="true"] {
+    display: none;
+  }
+
+  /* ── 2. ШАПКА И КОНТЕНТ ──────────────────────── */
+
   .top-header {
-    left: 0 !important;
+    left: 0;
     padding: 0 16px;
   }
 
-  /* Убираем store-info чтобы влез выход */
   .store-info {
     display: none;
   }
 
-  /* Основной контент — без отступа под sidebar, с паддингом под bottom nav */
+  /* main-content: отступ снизу = высота bottom nav */
   .main-content {
-    margin-left: 0 !important;
+    margin-left: 0;
     margin-top: 96px;
-    padding: 12px 12px 80px;
-    /* Предотвращаем горизонтальный скролл */
+    padding: 12px 12px 74px;
     width: 100%;
-    overflow-x: hidden;
+    /* НЕ ставим overflow-x: hidden здесь — это создаёт stacking context
+       и ломает position:fixed внутри */
     box-sizing: border-box;
+    min-height: auto;
   }
 
-  /* Секции не должны выходить за ширину */
-  .section {
-    width: 100%;
+  /* ── 3. ГОРИЗОНТАЛЬНЫЙ СКРОЛЛ ────────────────────
+     Убираем только там где нужно, не на всём body.
+     body/html overflow-x:hidden ставим аккуратно —
+     только на body, не трогая html (иначе ломается
+     position:fixed в Safari).
+  ─────────────────────────────────────────────────── */
+  body {
     overflow-x: hidden;
   }
+
+  /* Таблицы оборачиваем скроллом */
+  .products-table-full,
+  .operations-table,
+  .cart-table,
+  .return-sales-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+
+  /* ── 4. КОНТЕНТНЫЕ ПРАВКИ ─────────────────────── */
 
   .section-title {
     font-size: 22px;
@@ -1015,10 +1144,13 @@ body {
     gap: 10px;
   }
 
-  /* Торговая сетка — в одну колонку */
   .trading-grid {
     grid-template-columns: 1fr;
     gap: 12px;
+  }
+
+  .right-panel {
+    position: static;
   }
 
   .stats-grid {
@@ -1040,26 +1172,80 @@ body {
     grid-template-columns: 1fr;
   }
 
-  /* Таблицы — горизонтальный скролл только внутри обёртки */
-  .table-scroll-wrapper {
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  /* Период кнопки */
   .period-buttons {
     width: 100%;
     overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 4px;
   }
 
-  /* Карточки статистики */
+  .period-buttons::-webkit-scrollbar {
+    display: none;
+  }
+
+  .period-btn {
+    flex-shrink: 0;
+  }
+
   .stat-card {
     padding: 14px;
   }
 
   .stat-value {
     font-size: 22px;
+  }
+
+  #tab-sale .products-grid {
+    max-height: calc(100vh - 300px);
+    min-height: 100px;
+  }
+
+  /* ── 5. ЗОНЫ НАЖАТИЯ ─────────────────────────── */
+  button {
+    touch-action: manipulation;
+    min-height: 44px;
+  }
+
+  .tab-btn,
+  .period-btn,
+  .payment-btn {
+    min-height: 44px;
+  }
+
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="search"],
+  .input {
+    min-height: 48px;
+    /* 16px предотвращает авто-зум iOS */
+    font-size: 16px;
+  }
+
+  .qty-btn,
+  .cart-btn {
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+  }
+
+  /* ── 6. TOAST — поднимаем над bottom nav ─────── */
+  .toast {
+    bottom: 74px;
+  }
+
+  /* ── 7. МОДАЛКИ — выше bottom nav ───────────────
+     Модалки должны быть выше 1100 (z-index sidebar).
+     Они уже имеют z-index: 9999, но явно фиксируем.
+  ─────────────────────────────────────────────────── */
+  .modal {
+    z-index: 9999;
+  }
+
+  .success-modal-overlay {
+    z-index: 10000;
   }
 }
 
@@ -1075,23 +1261,13 @@ body {
   }
 
   .main-content {
-    margin-top: 96px;
-    padding: 10px 10px 80px;
+    padding: 10px 10px 74px;
   }
 
   .section-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;
-  }
-
-  .period-buttons {
-    width: 100%;
-  }
-
-  .period-btn {
-    font-size: 12px;
-    padding: 8px 12px;
   }
 
   .products-grid {
@@ -1131,8 +1307,7 @@ body {
 
   .modal-content {
     width: 95%;
-    margin: 10px;
-    max-height: 90vh;
+    max-height: 88vh;
     overflow-y: auto;
   }
 
@@ -1143,6 +1318,11 @@ body {
 
   .stats-grid {
     grid-template-columns: 1fr;
+  }
+
+  /* Подписи nav чуть меньше */
+  .sidebar .nav-label {
+    font-size: 9px;
   }
 }
 
@@ -2678,240 +2858,41 @@ body {
   }
 }
 /* =============================================
-   MOBILE BOTTOM NAVIGATION
-   Превращаем sidebar в bottom nav на мобильных.
-   Desktop (>768px) — всё как было, без изменений.
+   MOBILE BOTTOM NAV — дополнительные правила
+   (scanner, иконки, safe area)
    ============================================= */
 
-@media (max-width: 768px) {
-
-  /* ── Глобальный сброс горизонтального скролла ── */
-  html, body {
-    overflow-x: hidden !important;
-    max-width: 100vw;
-  }
-
-  *, *::before, *::after {
-    max-width: 100%;
-  }
-
-  /* Таблицы — только внутри своего контейнера */
-  table {
-    display: block;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    max-width: 100%;
-  }
-
-  /* ── Sidebar → Bottom Navigation ─────────────── */
-  /*
-   * Sidebar скрыт (правило выше).
-   * Вместо него — фиксированная полоса снизу,
-   * собранная из тех же nav-item кнопок через CSS.
-   * Мы переключаем sidebar в режим bottom-bar.
-   */
-
-  .sidebar {
-    display: flex !important;
-    flex-direction: row !important;
-    position: fixed !important;
-    top: auto !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    width: 100% !important;
-    height: 62px !important;
-    background: #1a2540 !important;
-    border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
-    border-right: none !important;
-    z-index: 1100 !important;
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4) !important;
-    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
-    overflow: hidden !important;
-    align-items: stretch !important;
-  }
-
-  /* Скрываем логотип-шапку сайдбара */
-  .sidebar .sidebar-header {
-    display: none !important;
-  }
-
-  /* .nav-menu превращается в горизонтальный flex */
-  .sidebar .nav-menu {
-    display: flex !important;
-    flex-direction: row !important;
-    width: 100% !important;
-    padding: 0 !important;
-    gap: 0 !important;
-    align-items: stretch !important;
-    overflow: hidden !important;
-  }
-
-  /* Каждый nav-item — равная ширина */
-  .sidebar .nav-item {
-    flex: 1 !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 3px !important;
-    padding: 6px 4px 4px !important;
-    border-radius: 0 !important;
-    font-size: 10px !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.01em !important;
-    min-height: unset !important;
-    height: 100% !important;
-    text-align: center !important;
-    color: #64748b !important;
-    background: transparent !important;
-    border: none !important;
-    border-top: 2px solid transparent !important;
-    -webkit-tap-highlight-color: transparent !important;
-    transition: color 0.15s, border-color 0.15s !important;
-    position: relative !important;
-  }
-
-  /* Разделители */
-  .sidebar .nav-item + .nav-item {
-    border-left: 1px solid rgba(255, 255, 255, 0.06) !important;
-  }
-
-  /* Активная вкладка */
-  .sidebar .nav-item.active {
-    color: #60a5fa !important;
-    background: transparent !important;
-    border-top: 2px solid #3b82f6 !important;
-  }
-
-  /* SVG иконки в bottom nav */
-  .sidebar .nav-item .nav-icon-svg {
-    width: 20px !important;
-    height: 20px !important;
-    flex-shrink: 0 !important;
-    display: block !important;
-    margin: 0 auto !important;
-  }
-
-  /* Метки под иконками */
-  .sidebar .nav-item .nav-label {
-    display: block !important;
-    font-size: 10px !important;
-    line-height: 1.1 !important;
-    text-align: center !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    max-width: 100% !important;
-    flex: unset !important;
-  }
-
-  /* Тап-эффект */
-  .sidebar .nav-item:active {
-    transform: scale(0.9) !important;
-    transition: transform 0.08s !important;
-  }
-
-  /* Увеличиваем зоны нажатия: кнопки и инпуты */
-  button,
-  .btn-primary,
-  .btn-secondary,
-  .btn-sell,
-  .payment-btn,
-  .tab-btn,
-  .period-btn,
-  select {
-    min-height: 44px;
-    touch-action: manipulation;
-  }
-
-  input[type="text"],
-  input[type="number"],
-  input[type="email"],
-  input[type="search"],
-  .input {
-    min-height: 48px;
-    font-size: 16px !important; /* Предотвращает авто-зум на iOS */
-  }
-
-  .qty-btn,
-  .cart-btn {
-    width: 40px !important;
-    height: 40px !important;
-    min-height: 40px !important;
-    font-size: 18px !important;
-  }
-
-  /* ── Toast — выше bottom nav ─────────────────── */
-  .toast {
-    bottom: 78px !important;
-    right: 12px !important;
-    left: 12px !important;
-    right: 12px !important;
-    text-align: center !important;
-  }
-
-  /* ── Модалки — поверх всего ──────────────────── */
-  .modal,
-  .success-modal-overlay,
-  #barcodeScannerModal {
-    z-index: 9999 !important;
-  }
-
-  /* ── Продуктовая сетка в кассе ───────────────── */
-  #tab-sale .products-grid {
-    max-height: calc(100vh - 320px);
-    min-height: 100px;
-  }
-
-  /* ── Right panel в торговле — не sticky на мобиле */
-  .right-panel {
-    position: static !important;
-  }
-
-  /* ── Таблица возвратов — скрываем лишние колонки */
-  .return-sales-table .col-payment {
-    display: none;
-  }
-
-  /* ── Период кнопки — горизонтальный скролл ───── */
-  .period-buttons {
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    padding-bottom: 4px;
-  }
-
-  .period-buttons::-webkit-scrollbar {
-    display: none;
-  }
-
-  .period-btn {
-    flex-shrink: 0;
-  }
-
-}
-
-/* ── На маленьких экранах — урезаем подписи в bottom nav */
-@media (max-width: 360px) {
-  .sidebar .nav-item .nav-label {
-    font-size: 9px !important;
-  }
-
-  .sidebar .nav-item .nav-icon-svg {
-    width: 18px !important;
-    height: 18px !important;
+/* Safe area для iPhone с чёлкой */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  @media (max-width: 768px) {
+    .sidebar {
+      padding-bottom: env(safe-area-inset-bottom);
+      height: calc(62px + env(safe-area-inset-bottom));
+      max-height: calc(62px + env(safe-area-inset-bottom));
+    }
+    .main-content {
+      padding-bottom: calc(74px + env(safe-area-inset-bottom));
+    }
+    .toast {
+      bottom: calc(74px + env(safe-area-inset-bottom));
+    }
   }
 }
 
-/* ── Scanner modal — всегда поверх bottom nav ─── */
+/* Scanner modal всегда поверх всего */
 #barcodeScannerModal {
   z-index: 10000;
 }
 
-/* Скрываем вторичные пункты меню на мобиле (Поставщики, Клиенты, Настройки) */
 @media (max-width: 768px) {
-  .sidebar .nav-item[data-mobile-hidden="true"] {
-    display: none !important;
+  .scanner-container {
+    max-width: 100%;
+  }
+  .scanner-viewport {
+    max-width: 100%;
+  }
+  .scanner-frame {
+    width: 85%;
+    height: 180px;
   }
 }
