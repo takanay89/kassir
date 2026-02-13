@@ -839,14 +839,10 @@ body {
   opacity: 0;
   transition: all 0.3s;
   z-index: 10000;
-  /* Скрытый toast не должен перехватывать клики */
-  pointer-events: none;
 }
 
 .toast.show {
   transform: translateY(0);
-  pointer-events: auto;
-}
   opacity: 1;
 }
 
@@ -968,591 +964,79 @@ body {
   }
   
   .right-panel {
-    position: static;
+    position: sticky;
+    bottom: 0;
+    background: var(--bg-primary);
     padding-top: 12px;
   }
 }
 
-/* =============================================
-   МОБИЛЬНЫЕ (до 768px)
-   Sidebar → bottom nav. Чекбокс управляет
-   выдвижным меню "Ещё" через чистый CSS.
-   Никакого нового JS, никаких overlay.
-   ============================================= */
+/* МОБИЛЬНЫЕ (до 768px) */
 
-/* Чекбокс скрыт визуально но остаётся функциональным */
-.more-menu-checkbox {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-  top: -9999px;
-}
-
-@media (max-width: 768px) {
-
-  /* ─────────────────────────────────────────────
-     1. body — убираем горизонтальный скролл
-        ТОЛЬКО на body, не на html:
-        html{overflow:hidden} ломает position:fixed
-        в Safari/iOS и блокирует все клики.
-  ───────────────────────────────────────────── */
-  body {
-    overflow-x: hidden;
-  }
-
-  /* ─────────────────────────────────────────────
-     2. SIDEBAR → BOTTOM NAV
-        Sidebar фиксируется снизу, становится
-        горизонтальной полосой высотой 62px.
-        overflow: visible — критично: hidden
-        создаёт stacking context и блокирует
-        клики по контенту выше.
-  ───────────────────────────────────────────── */
-  .sidebar {
-    position: fixed;
-    top: auto;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    /* 62px + safe-area для iPhone с вырезом */
-    height: calc(62px + env(safe-area-inset-bottom, 0px));
-    min-height: calc(62px + env(safe-area-inset-bottom, 0px));
-    flex-direction: column;
-    border-right: none;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    /* Выше status-bar(1000) и top-header(999) — иначе они перекрывают bottom nav */
-    z-index: 1050;
-    box-shadow: 0 -2px 16px rgba(0, 0, 0, 0.3);
-    /* overflow:visible чтобы "Ещё" меню выезжало вверх */
-    overflow: visible;
-    pointer-events: auto;
-    /* Нет transform, нет filter — не создаём stacking context */
-  }
-
-  /* Логотип скрываем */
-  .sidebar .sidebar-header {
-    display: none;
-  }
-
-  /* nav-menu — горизонтальный ряд кнопок.
-     position:relative — якорь для абсолютного попапа "Ещё".
-     overflow:visible — попап выезжает вверх за sidebar. */
-  .sidebar .nav-menu {
-    display: flex;
-    flex-direction: row;
-    align-items: stretch;
-    position: relative;
-    width: 100%;
-    height: 62px;
-    padding: 0;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-    gap: 0;
-    overflow: visible;
-  }
-
-  /* Все nav-item в bottom nav */
-  .sidebar .nav-item,
-  .sidebar .nav-more-btn {
-    flex: 1;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    padding: 8px 4px 6px;
-    border-radius: 0;
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.01em;
-    min-height: 62px;
-    height: 62px;
-    text-align: center;
-    color: #64748b;
-    background: transparent;
-    border: none;
-    border-top: 2px solid transparent;
-    /* Критично для работы тачей */
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-    cursor: pointer;
-    pointer-events: auto;
-    /* Без transform — не создаём stacking context */
-    transform: none;
-    position: relative;
-    display: flex;
-    text-decoration: none;
-    box-sizing: border-box;
-  }
-
-  /* Активная вкладка */
-  .sidebar .nav-item.active {
-    color: #60a5fa;
-    background: rgba(59, 130, 246, 0.08);
-    border-top: 2px solid #3b82f6;
-  }
-
-  /* Тап-эффект — только opacity, transform запрещён */
-  .sidebar .nav-item:active,
-  .sidebar .nav-more-btn:active {
-    opacity: 0.6;
-  }
-
-  /* SVG иконки */
-  .sidebar .nav-icon-svg {
-    width: 22px;
-    height: 22px;
-    flex-shrink: 0;
-    display: block;
-    pointer-events: none;
-  }
-
-  /* Подписи */
-  .sidebar .nav-label {
-    display: block;
-    font-size: 10px;
-    line-height: 1.2;
-    text-align: center;
-    white-space: nowrap;
-    pointer-events: none;
-    flex: none;
-  }
-
-  /* ─────────────────────────────────────────────
-     3. PRIMARY / SECONDARY — разделение кнопок
-
-     .nav-menu — контейнер с position:relative.
-     Это единственный родитель для абсолютного
-     попапа. Sidebar имеет overflow:visible —
-     попап выезжает вверх за пределы sidebar.
-
-     [data-mobile-primary]  — 5 кнопок в баре
-     [data-mobile-secondary] — в попапе "Ещё"
-     .nav-more-btn — кнопка-триггер "Ещё"
-  ───────────────────────────────────────────── */
-
-  /* Secondary кнопки изъяты из потока nav-menu.
-     По умолчанию — скрыты, pointer-events:none —
-     не перехватывают клики по странице. */
-  .sidebar .nav-item[data-mobile-secondary] {
-    display: none;
-    pointer-events: none;
-  }
-
-  /* Кнопка "Ещё" — всегда видна, занимает 1 долю */
-  .sidebar .nav-more-btn {
-    display: flex;
-    flex: 1;
-    color: #64748b;
-    background: transparent;
-    border-top: 2px solid transparent;
-  }
-
-  /* ─────────────────────────────────────────────
-     4. ПОПАП "ЕЩЁ" — position:absolute внутри
-        .nav-menu { position:relative }.
-
-     ✅ absolute — не создаёт новый stacking context
-     ✅ остаётся внутри sidebar DOM-дерева
-     ✅ sidebar.overflow:visible — попап виден
-     ✅ никакого fixed на дочерних элементах
-     ✅ pointer-events:none когда скрыт
-
-     Попап — это псевдоэлемент ::before у .nav-menu
-     (фон + тень), а secondary кнопки абсолютны
-     внутри него через nth-child offset.
-
-     Архитектура:
-       .sidebar { position:fixed; overflow:visible }
-         .nav-menu { position:relative; overflow:visible }
-           .nav-item[secondary] { position:absolute;
-                                  bottom:100%; }
-  ───────────────────────────────────────────── */
-
-  /* Когда checkbox checked — показываем попап */
-
-  /* Фоновая панель попапа через ::before nav-menu */
-  .more-menu-checkbox:checked ~ .sidebar .nav-menu::before {
-    content: '';
-    position: absolute;
-    bottom: 100%;          /* вплотную над bottom nav */
-    left: 0;
-    right: 0;
-    height: 72px;
-    background: #1e293b;
-    border-top: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.5);
-    /* z-index ниже кнопок попапа, выше контента */
-    z-index: 1;
-  }
-
-  /* Тёмный полупрозрачный скрим за попапом —
-     через ::after nav-menu. Высота от верха экрана
-     до верхней границы попапа.
-     pointer-events:none — НЕ блокирует клики. */
-  .more-menu-checkbox:checked ~ .sidebar .nav-menu::after {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: calc(62px + 72px + env(safe-area-inset-bottom, 0px));
-    background: rgba(0, 0, 0, 0.4);
-    pointer-events: none;
-    /* z-index ниже попапа, выше страницы */
-    z-index: 490;
-  }
-
-  /* Secondary кнопки: absolute внутри nav-menu,
-     выходят вверх через bottom:100%.
-     3 кнопки — по 33.33% ширины в ряд. */
-  .more-menu-checkbox:checked ~ .sidebar .nav-item[data-mobile-secondary] {
-    display: flex;
-    position: absolute;
-    bottom: 100%;          /* вплотную над bottom nav */
-    width: 33.33%;
-    height: 72px;
-    min-height: 72px;
-    padding: 12px 4px 10px;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    font-size: 11px;
-    font-weight: 600;
-    color: #94a3b8;
-    background: transparent;  /* фон даёт ::before */
-    border: none;
-    border-top: none;
-    border-right: 1px solid rgba(255, 255, 255, 0.07);
-    box-sizing: border-box;
-    pointer-events: auto;
-    cursor: pointer;
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-    /* z-index выше фонового ::before */
-    z-index: 2;
-    /* Нет transform, нет filter */
-  }
-
-  /* Горизонтальные позиции трёх кнопок.
-     nth-child считает внутри .nav-menu:
-     1=trading, 2=products, 3=expenses,
-     4=money, 5=reports, 6=suppliers(secondary),
-     7=clients(secondary), 8=settings(secondary),
-     9=more-btn */
-  .more-menu-checkbox:checked ~ .sidebar .nav-item[data-mobile-secondary]:nth-child(6) {
-    left: 0;
-  }
-
-  .more-menu-checkbox:checked ~ .sidebar .nav-item[data-mobile-secondary]:nth-child(7) {
-    left: 33.33%;
-  }
-
-  .more-menu-checkbox:checked ~ .sidebar .nav-item[data-mobile-secondary]:nth-child(8) {
-    left: 66.67%;
-    border-right: none;
-  }
-
-  /* Тап-состояние secondary кнопок */
-  .more-menu-checkbox:checked ~ .sidebar .nav-item[data-mobile-secondary]:active {
-    color: #f1f5f9;
-    opacity: 0.7;
-  }
-
-  /* Кнопка "Ещё" подсвечивается когда попап открыт */
-  .more-menu-checkbox:checked ~ .sidebar .nav-more-btn {
-    color: #3b82f6;
-    border-top: 2px solid #3b82f6;
-    background: rgba(59, 130, 246, 0.08);
-  }
-
-  /* ─────────────────────────────────────────────
-     5. ШАПКА на всю ширину
-  ───────────────────────────────────────────── */
-  .top-header {
-    left: 0;
-    padding: 0 16px;
-  }
-
-  .store-info {
-    display: none;
-  }
-
-  /* ─────────────────────────────────────────────
-     6. MAIN CONTENT
-        margin-left:0 — sidebar больше не слева.
-        padding-bottom — пространство для bottom nav.
-        НЕ ставим overflow:hidden — это создаёт
-        stacking context и ломает position:fixed.
-  ───────────────────────────────────────────── */
-  .main-content {
-    margin-left: 0;
-    margin-top: 96px;
-    padding: 12px 12px calc(70px + env(safe-area-inset-bottom, 0px));
-    width: 100%;
-    box-sizing: border-box;
-    min-height: auto;
-  }
-
-  /* Секции — не ограничиваем overflow:hidden */
-  .section {
-    width: 100%;
-  }
-
-  /* ─────────────────────────────────────────────
-     7. КОНТЕНТНЫЕ ПРАВКИ
-  ───────────────────────────────────────────── */
-  .section-title {
-    font-size: 22px;
-  }
-
-  .section-header {
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-
-  .trading-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
-  .right-panel {
-    position: static;
-  }
-
-  .stats-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
-
-  .stat-card {
-    padding: 14px;
-  }
-
-  .stat-value {
-    font-size: 22px;
-  }
-
-  .product-row {
-    grid-template-columns: 2fr 1fr 1fr;
-    gap: 8px;
-    font-size: 13px;
-  }
-
-  .product-row > div:nth-child(4) {
-    display: none;
-  }
-
-  .form-row {
-    grid-template-columns: 1fr;
-  }
-
-  .period-buttons {
-    width: 100%;
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    padding-bottom: 4px;
-  }
-
-  .period-buttons::-webkit-scrollbar {
-    display: none;
-  }
-
-  .period-btn {
-    flex-shrink: 0;
-  }
-
-  #tab-sale .products-grid {
-    max-height: calc(100vh - 300px);
-    min-height: 100px;
-  }
-
-  /* ─────────────────────────────────────────────
-     8. ЗОНЫ НАЖАТИЯ — минимум 50px
-        touch-action:manipulation убирает 300ms
-        задержку двойного тапа в старых браузерах.
-  ───────────────────────────────────────────── */
-  button,
-  .tab-btn,
-  .period-btn,
-  .payment-btn,
-  select {
-    touch-action: manipulation;
-    min-height: 50px;
-  }
-
-  .btn-primary,
-  .btn-secondary,
-  .btn-sell {
-    min-height: 50px;
-  }
-
-  input[type="text"],
-  input[type="number"],
-  input[type="email"],
-  input[type="search"],
-  .input {
-    min-height: 48px;
-    /* 16px — предотвращает авто-зум на iOS */
-    font-size: 16px;
-  }
-
-  .qty-btn,
-  .cart-btn {
-    width: 44px;
-    height: 44px;
-    min-height: 44px;
-    font-size: 18px;
-  }
-
-  /* ─────────────────────────────────────────────
-     9. ТАБЛИЦЫ — горизонтальный скролл внутри
-        Каждую таблицу делаем block+overflow:auto,
-        а не ломаем весь layout через body/html.
-  ───────────────────────────────────────────── */
-  .products-table-full,
-  .operations-table,
-  .cart-table,
-  .return-sales-table {
-    display: block;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    width: 100%;
-  }
-
-  /* ─────────────────────────────────────────────
-     10. TOAST — поднимаем выше bottom nav
-  ───────────────────────────────────────────── */
-  .toast {
-    bottom: calc(70px + env(safe-area-inset-bottom, 0px));
-    right: 12px;
-    left: 12px;
-    text-align: center;
-  }
-
-  /* ─────────────────────────────────────────────
-     11. МОДАЛКИ — поверх bottom nav (z-index > 500)
-  ───────────────────────────────────────────── */
-  .modal {
-    z-index: 9999;
-  }
-
-  .success-modal-overlay {
-    z-index: 10000;
-  }
-
-  #barcodeScannerModal {
-    z-index: 10000;
-  }
-
-  /* Вкладки — горизонтальный скролл */
-  .trading-tabs {
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    padding-bottom: 4px;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-
-  .trading-tabs::-webkit-scrollbar {
-    display: none;
-  }
-
-  .tab-btn {
-    flex-shrink: 0;
-    min-height: 50px;
-    padding: 10px 16px;
-    font-size: 13px;
-  }
-
-  .stats-mini {
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-}
+/* СТАРЫЙ MOBILE КОД УДАЛЁН - см. новый полноценный mobile layout ниже (строка ~2420) */
 
 /* МАЛЕНЬКИЕ МОБИЛЬНЫЕ (до 480px) */
 @media (max-width: 480px) {
   .status-bar {
     font-size: 11px;
-    padding: 0 12px;
   }
-
-  .top-header {
-    padding: 0 12px;
-  }
-
-  .main-content {
-    padding: 10px 10px calc(70px + env(safe-area-inset-bottom, 0px));
-  }
-
+  
+  /* main-content, top-header стили перенесены в основной mobile layout */
+  
   .section-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 10px;
+    gap: 12px;
   }
-
+  
+  .period-buttons {
+    width: 100%;
+  }
+  
+  .period-btn {
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+  
   .products-grid {
     grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
     gap: 8px;
   }
-
+  
   .product-card {
     padding: 10px;
   }
-
+  
   .product-name {
     font-size: 12px;
   }
-
+  
   .product-price {
     font-size: 13px;
   }
-
+  
   .cart-item {
     padding: 10px;
   }
-
+  
   .total-card {
-    padding: 14px 16px;
-  }
-
-  .total-card-amount {
-    font-size: 22px;
-  }
-
-  .btn-primary,
-  .btn-sell {
+    font-size: 20px;
     padding: 16px;
-    font-size: 15px;
   }
-
+  
+  .btn-primary {
+    padding: 14px;
+    font-size: 14px;
+  }
+  
   .modal-content {
     width: 95%;
-    max-height: 88vh;
-    overflow-y: auto;
+    margin: 10px;
   }
-
+  
   .pl-row {
     padding: 10px 12px;
     font-size: 13px;
-  }
-
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .sidebar .nav-label {
-    font-size: 9px;
-  }
-
-  .sidebar .nav-icon-svg {
-    width: 20px;
-    height: 20px;
   }
 }
 
@@ -1992,7 +1476,25 @@ body {
   transform: translateY(0);
 }
 
-/* ===== АДАПТИВ ДЛЯ ВКЛАДОК — обработан в основном @media блоке выше ===== */
+/* ===== АДАПТИВ ДЛЯ ВКЛАДОК ===== */
+@media (max-width: 768px) {
+  .trading-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 8px;
+  }
+  
+  .tab-btn {
+    flex-shrink: 0;
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+  
+  .stats-mini {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
 
 /* ===== ТАБЛИЦА ОПЕРАЦИЙ ===== */
 .operations-table {
@@ -2844,6 +2346,464 @@ body {
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+   ПОЛНОЦЕННЫЙ МОБИЛЬНЫЙ LAYOUT (768px и меньше)
+   ═══════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  /* === СКРЫТЬ DESKTOP SIDEBAR === */
+  .sidebar {
+    display: none !important;
+    width: 0 !important;
+    z-index: -1 !important;
+  }
+  
+  /* === STATUS BAR === */
+  .status-bar {
+    height: 32px;
+    padding: 0 12px;
+    padding-top: env(safe-area-inset-top);
+    height: calc(32px + env(safe-area-inset-top));
+  }
+  
+  /* === TOP HEADER === */
+  .top-header {
+    position: fixed !important;
+    top: calc(32px + env(safe-area-inset-top)) !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: 56px !important;
+    padding: 0 16px !important;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .store-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  
+  .store-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0.6;
+  }
+  
+  .store-name {
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .user-profile {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .user-name {
+    font-size: 13px;
+    max-width: 100px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .btn-logout {
+    padding: 6px 12px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  
+  /* === MAIN CONTENT === */
+  .main-content {
+    margin-top: calc(88px + env(safe-area-inset-top)) !important;
+    margin-left: 0 !important;
+    padding: 16px !important;
+    padding-bottom: calc(90px + env(safe-area-inset-bottom)) !important;
+    min-height: calc(100vh - 88px - env(safe-area-inset-top));
+  }
+  
+  /* === SECTION HEADER === */
+  .section-header {
+    margin-bottom: 16px;
+  }
+  
+  .section-title {
+    font-size: 24px;
+  }
+  
+  /* === TRADING GRID === */
+  .trading-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  /* === CARDS === */
+  .card {
+    padding: 16px;
+    border-radius: 12px;
+  }
+  
+  .card-title {
+    font-size: 15px;
+    margin-bottom: 12px;
+  }
+  
+  /* === PRODUCTS GRID === */
+  .products-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+  }
+  
+  /* === PRODUCT CARD === */
+  .product-card {
+    padding: 10px;
+  }
+  
+  .product-name {
+    font-size: 13px;
+    line-height: 1.3;
+    max-height: 2.6em;
+  }
+  
+  .product-price {
+    font-size: 15px;
+    margin-top: 6px;
+  }
+  
+  /* === CART PANEL === */
+  .right-panel {
+    position: relative;
+  }
+  
+  /* === BUTTONS === */
+  .btn {
+    min-height: 48px;
+    font-size: 15px;
+    padding: 12px 20px;
+  }
+  
+  .btn-primary,
+  .btn-success,
+  .btn-secondary {
+    min-height: 48px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   МОБИЛЬНОЕ НИЖНЕЕ МЕНЮ
+   ═══════════════════════════════════════════════════════════════════ */
+
+.mobile-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: calc(70px + env(safe-area-inset-bottom));
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+  padding-bottom: env(safe-area-inset-bottom);
+  z-index: 1000;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
+}
+
+@media (max-width: 768px) {
+  .mobile-bottom-nav {
+    display: flex !important;
+    align-items: flex-start;
+    justify-content: space-around;
+    padding-top: 8px;
+  }
+}
+
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex: 1;
+  min-height: 62px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 8px 4px;
+  position: relative;
+}
+
+.mobile-nav-item:active {
+  transform: scale(0.95);
+}
+
+.mobile-nav-item.active {
+  color: var(--blue);
+}
+
+.mobile-nav-item.active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 3px;
+  background: var(--blue);
+  border-radius: 0 0 3px 3px;
+}
+
+.mobile-nav-icon {
+  width: 24px;
+  height: 24px;
+  stroke-width: 2;
+  flex-shrink: 0;
+}
+
+.mobile-nav-label {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   МОБИЛЬНАЯ КНОПКА "ЕЩЁ" (три точки)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.mobile-menu-btn {
+  display: none;
+  position: fixed;
+  top: calc(32px + env(safe-area-inset-top) + 64px);
+  right: 16px;
+  width: 48px;
+  height: 48px;
+  background: var(--blue);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  z-index: 998;
+  transition: all 0.2s;
+}
+
+.mobile-menu-btn:active {
+  transform: scale(0.9);
+}
+
+.mobile-menu-btn svg {
+  width: 24px;
+  height: 24px;
+}
+
+@media (max-width: 768px) {
+  .mobile-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   МОБИЛЬНЫЙ DRAWER (выдвижное меню)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.mobile-drawer-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1001;
+  opacity: 0;
+  transition: opacity 0.3s;
+  backdrop-filter: blur(2px);
+}
+
+.mobile-drawer-overlay.active {
+  display: block;
+  opacity: 1;
+}
+
+.mobile-drawer {
+  position: fixed;
+  top: 0;
+  right: -320px;
+  width: 280px;
+  height: 100%;
+  background: var(--bg-secondary);
+  z-index: 1002;
+  transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.3);
+  padding-top: env(safe-area-inset-top);
+}
+
+.mobile-drawer.active {
+  right: 0;
+}
+
+.mobile-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.mobile-drawer-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.mobile-drawer-close {
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text-secondary);
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.mobile-drawer-close:active {
+  transform: scale(0.9);
+}
+
+.mobile-drawer-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.mobile-drawer-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 16px;
+  background: transparent;
+  border: none;
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  margin-bottom: 4px;
+}
+
+.mobile-drawer-item:active {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(0.98);
+}
+
+.mobile-drawer-icon {
+  width: 22px;
+  height: 22px;
+  color: var(--blue);
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   УЛУЧШЕНИЯ TOUCH ИНТЕРФЕЙСА
+   ═══════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  /* Все кликабельные элементы минимум 44px */
+  button,
+  .btn,
+  .product-card,
+  input[type="button"],
+  input[type="submit"] {
+    min-height: 44px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Увеличение области клика для мелких элементов */
+  .cart-item-remove,
+  .modal-close,
+  .scanner-close {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  
+  /* Убираем hover эффекты на тач устройствах */
+  @media (hover: none) {
+    .product-card:hover,
+    .btn:hover {
+      transform: none;
+    }
+  }
+  
+  /* Поля ввода */
+  .input,
+  input,
+  textarea,
+  select {
+    font-size: 16px; /* Предотвращает zoom на iOS */
+    min-height: 48px;
+  }
+  
+  /* Модальные окна на весь экран */
+  .modal {
+    border-radius: 0;
+  }
+  
+  .modal-content {
+    max-height: 100%;
+    border-radius: 20px 20px 0 0;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   АДАПТАЦИЯ ТАБЛИЦ ДЛЯ МОБИЛЬНЫХ
+   ═══════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  /* Таблицы должны скроллиться горизонтально */
+  .table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  table {
+    font-size: 13px;
+  }
+  
+  table th,
+  table td {
+    padding: 10px 8px;
+    white-space: nowrap;
+  }
+  
+  /* Компактные заголовки */
+  table th {
+    font-size: 11px;
+  }
+}
+
 /* ============================================
    BARCODE SCANNER STYLES
    ============================================ */
@@ -3032,13 +2992,11 @@ body {
   z-index: 10001;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
   opacity: 0;
-  pointer-events: none;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .toast-notification.show {
   opacity: 1;
-  pointer-events: auto;
   transform: translateX(-50%) translateY(0);
 }
 
