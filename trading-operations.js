@@ -1393,6 +1393,8 @@ async function refreshProductsCache() {
     qty: p.stock_quantity
   }))
 );
+      alert("CACHE REFRESHED");
+
       } catch (updateErr) {
     console.warn('⚠️ Не удалось обновить кеш продуктов:', updateErr);
   }
