@@ -61,11 +61,24 @@
 
   <!-- TOP HEADER -->
   <header class="top-header">
-    <div class="store-info">
+    <div class="store-info store-info-mobile-hide">
       <span class="store-label">Компания:</span>
       <span class="store-name" id="companyName">Загрузка...</span>
       <span class="store-label" style="margin-left: 20px;">Магазин:</span>
       <span class="store-name" id="storeName" >Не выбран</span>
+    </div>
+    
+    <button class="btn-sections-toggle" onclick="this.nextElementSibling.classList.toggle('show')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+        <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+      </svg>
+    </button>
+    
+    <div class="sections-menu">
+      <button onclick="showSection('suppliers'); this.parentElement.classList.remove('show')">Поставщики</button>
+      <button onclick="showSection('clients'); this.parentElement.classList.remove('show')">Клиенты</button>
+      <button onclick="showSection('settings'); this.parentElement.classList.remove('show')">Настройки</button>
     </div>
     
     <div class="user-profile">
@@ -1449,28 +1462,6 @@
           .catch(err => console.log('❌ Service Worker ошибка:', err));
       });
     }
-
-    // СИНХРОНИЗАЦИЯ МОБИЛЬНОЙ НАВИГАЦИИ
-    (function() {
-      function syncMobileNav() {
-        const active = document.querySelector('.section.active');
-        if (!active) return;
-
-        const name = active.id.replace('section-', '');
-
-        document.querySelectorAll('.mobile-nav-item').forEach(btn => {
-          btn.classList.toggle('active', btn.dataset.section === name);
-        });
-      }
-
-      const observer = new MutationObserver(syncMobileNav);
-
-      document.querySelectorAll('.section').forEach(s => {
-        observer.observe(s, { attributes: true, attributeFilter: ['class'] });
-      });
-
-      document.addEventListener('DOMContentLoaded', syncMobileNav);
-    })();
   </script>
 
   <!-- MODAL: EXCEL IMPORT PREVIEW -->
@@ -1771,6 +1762,13 @@ function showToast(message) {
     </svg>
     <span class="mobile-nav-label">Отчёты</span>
   </button>
+  
+  <button class="mobile-nav-item" onclick="openMobileDrawer()">
+    <svg class="mobile-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+    <span class="mobile-nav-label">Ещё</span>
+  </button>
 </nav>
 
 <!-- MOBILE DRAWER MENU (Ещё) -->
@@ -1805,13 +1803,6 @@ function showToast(message) {
     </button>
   </div>
 </div>
-
-<!-- MOBILE MENU BUTTON (Ещё) -->
-<button class="mobile-menu-btn" id="mobileMenuBtn" onclick="openMobileDrawer()">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-    <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
-  </svg>
-</button>
 
 </body>
 </html>
