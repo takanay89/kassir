@@ -485,12 +485,8 @@ async function loadInitialData() {
       
       console.log('✅ PAYMENT_METHODS установлен:', PAYMENT_METHODS);
       
-       try {
-  await saveProductsToLocal(products);
-  await savePaymentMethodsToLocal(methods);
-} catch (e) {
-  console.warn('⚠️ Ошибка кеша, продолжаем online:', e);
-}
+      await saveProductsToLocal(products);
+      await savePaymentMethodsToLocal(methods);
       
       // Грузим поставщиков для дропдауна (тихо, не блокируем)
       try {
@@ -526,22 +522,66 @@ async function loadInitialData() {
 }
 
 async function loadAllProductsFromServer() {
-  const { data, error } = await supabase.from('v_stock_balance').select('*').order('product_name');
+  // ✅ КРИТИЧНО: грузим ТОЛЬКО остатки текущего магазина из product_balances
+  if (!window.STORE_LOCATION_ID) {
+    console.warn('⚠️ Магазин не выбран, загружаем все товары без остатков');
+    const { data, error } = await supabase
+      .from('products')
+      .select('id, name, sku, barcode, base_price, cost_price, type')
+      .eq('company_id', COMPANY_ID)
+      .eq('active', true)
+      .order('name');
+    
+    if (error) throw error;
+    
+    return (data || []).map(p => ({
+      id: p.id,
+      name: p.name,
+      sku: p.sku || '',
+      barcode: p.barcode || '',
+      base_price: Number(p.base_price || 0),
+      cost_price: Number(p.cost_price || 0),
+      quantity: 0,
+      type: p.type || 'product'
+    }));
+  }
+  
+  // Грузим товары с остатками ТОЛЬКО в текущем магазине
+  const { data, error } = await supabase
+    .from('product_balances')
+    .select(`
+      quantity,
+      product_id,
+      products!inner (
+        id,
+        name,
+        sku,
+        barcode,
+        base_price,
+        cost_price,
+        type
+      )
+    `)
+    .eq('store_location_id', window.STORE_LOCATION_ID)
+    .order('products(name)');
+  
   if (error) throw error;
 
-console.log("VIEW RAW DATA:", data);
+  console.log("PRODUCT_BALANCES DATA (store_location_id:", window.STORE_LOCATION_ID, "):", data);
   
-  return (data || []).map(p => ({
-    id: p.product_id,
-    name: p.product_name,
-    sku: p.sku || '',
-    barcode: p.barcode || '',
-    // ✅ СОХРАНЯЕМ ОРИГИНАЛЬНЫЕ ИМЕНА ПОЛЕЙ ДЛЯ СИСТЕМЫ:
-    base_price: Number(p.base_price || 0),
-    cost_price: Number(p.cost_price || 0),
-    stock_quantity: Number(p.balance || 0),  // ✅ ИСПРАВЛЕНО: используем stock_quantity
-    type: p.type || 'product'
-  }));
+  return (data || []).map(pb => {
+    const p = pb.products;
+    return {
+      id: p.id,
+      name: p.name,
+      sku: p.sku || '',
+      barcode: p.barcode || '',
+      base_price: Number(p.base_price || 0),
+      cost_price: Number(p.cost_price || 0),
+      quantity: Number(pb.quantity || 0),  // ✅ Остаток ТОЛЬКО в текущем магазине
+      type: p.type || 'product'
+    };
+  });
 }
 
 async function loadPaymentMethodsFromServer() {
@@ -584,28 +624,29 @@ function renderProductsList(query) {
     container.classList.remove('expanded');
   }
 
-  // ✅ ИСПРАВЛЕНИЕ: всегда используем window.PRODUCTS_CACHE (актуальные данные с сервера)
-  const filtered = (window.PRODUCTS_CACHE || []).filter(p => {
-    // Скрываем товары с нулевым остатком (услуги всегда показываем)
-    if (p.type !== 'service' && (p.stock_quantity || 0) <= 0) return false;
-    return (
-      (p.name || '').toLowerCase().includes(query) ||
-      (p.sku || '').toLowerCase().includes(query) ||
-      (p.barcode || '').toLowerCase().includes(query)
-    );
-  });
+  
+// ✅ ИСПРАВЛЕНИЕ: читаем из window.PRODUCTS_CACHE, а не локальной переменной
+const filtered = (window.PRODUCTS_CACHE || []).filter(p => {
+  // Скрываем товары с нулевым остатком (услуги всегда показываем)
+  if (p.type !== 'service' && (p.quantity || 0) <= 0) return false;
+  return (
+    (p.name || '').toLowerCase().includes(query) ||
+    (p.sku || '').toLowerCase().includes(query) ||
+    (p.barcode || '').toLowerCase().includes(query)
+  );
+});
 
   
   container.innerHTML = filtered.map(product => {
-    const isOutOfStock = (product.stock_quantity || 0) <= 0 && product.type !== 'service';
+    const isOutOfStock = (product.quantity || 0) <= 0 && product.type !== 'service';
     return `
       <div class="product-card ${isOutOfStock ? 'out-of-stock' : ''}" onclick="addToCart('${product.id}')">
         <div class="product-card-header">
           <div class="product-name">${product.name}</div>
-          <span class="product-stock">${product.type === 'service' ? 'Услуга' : (product.stock_quantity || 0) + ' шт'}</span>
+          <span class="product-stock">${product.type === 'service' ? 'Услуга' : (product.quantity || 0) + ' шт'}</span>
         </div>
         <div class="product-prices">
-          <div class="product-price">${formatMoney(product.base_price ?? product.sale_price ?? 0)}</div>
+          <div class="product-price">${formatMoney(product.base_price)}</div>
         </div>
       </div>
     `;
@@ -620,7 +661,8 @@ function renderIncomeProductsList(customProducts) {
   const container = document.getElementById('incomeProductsTable');
   if (!container) return;
   
-  const products = customProducts || (window.PRODUCTS_CACHE || []);
+  // ✅ ИСПРАВЛЕНИЕ: читаем из window.PRODUCTS_CACHE
+  const products = customProducts || window.PRODUCTS_CACHE || [];
   
   if (!products.length) {
     container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-secondary);">Нет товаров для прихода</div>';
@@ -643,7 +685,7 @@ function renderIncomeProductsList(customProducts) {
       <tbody>
         ${products.map(product => {
           const isService = product.type === 'service';
-          const quantity = Number(product.stock_quantity || 0);
+          const quantity = Number(product.quantity || 0);
           
           return `
             <tr style="border-bottom:1px solid var(--border-color);">
@@ -657,7 +699,7 @@ function renderIncomeProductsList(customProducts) {
                 </span>
               </td>
               <td style="text-align:right;color:var(--text-secondary);">${formatMoney(product.cost_price || 0)}</td>
-              <td style="text-align:right;font-weight:600;color:var(--primary-color);">${formatMoney(product.base_price ?? product.sale_price ?? 0)}</td>
+              <td style="text-align:right;font-weight:600;color:var(--primary-color);">${formatMoney(product.base_price || 0)}</td>
               <td style="text-align:center;color:${isService ? 'var(--text-secondary)' : quantity > 0 ? '#059669' : '#dc2626'};">
                 ${isService ? '∞' : (quantity > 0 ? quantity + ' шт' : '0 🔴')}
               </td>
@@ -680,7 +722,7 @@ window.renderIncomeProductsList = renderIncomeProductsList;
 // БЫСТРЫЙ ПРИХОД ДЛЯ СУЩЕСТВУЮЩЕГО ТОВАРА
 // =============================================
 window.openQuickIncome = function(productId) {
-  const product = (window.PRODUCTS_CACHE || []).find(p => p.id === productId);
+  const product = PRODUCTS_CACHE.find(p => p.id === productId);
   if (!product) return;
   
   window._quickIncomeProductId = productId;
@@ -804,6 +846,7 @@ function renderWriteoffProductsList() {
   const searchInput = document.getElementById('writeoffSearchInput');
   const query = searchInput ? searchInput.value.toLowerCase() : '';
   
+  // ✅ ИСПРАВЛЕНИЕ: читаем из window.PRODUCTS_CACHE
   const filtered = (window.PRODUCTS_CACHE || []).filter(p => {
     if (query) {
       const name = (p.name || '').toLowerCase();
@@ -824,10 +867,10 @@ function renderWriteoffProductsList() {
       <div class="product-card" onclick="addToCart('${product.id}')">
         <div class="product-card-header">
           <div class="product-name">${product.name}</div>
-          <span class="product-stock">${product.type === 'service' ? 'Услуга' : (product.stock_quantity || 0) + ' шт'}</span>
+          <span class="product-stock">${product.type === 'service' ? 'Услуга' : (product.quantity || 0) + ' шт'}</span>
         </div>
         <div class="product-prices">
-          <div class="product-price">${formatMoney(product.sale_price || 0)}</div>
+          <div class="product-price">${formatMoney(product.base_price || 0)}</div>
         </div>
       </div>
     `;
@@ -845,6 +888,7 @@ function renderSupplierReturnProductsList() {
   const searchInput = document.getElementById('supplierReturnSearchInput');
   const query = searchInput ? searchInput.value.toLowerCase() : '';
   
+  // ✅ ИСПРАВЛЕНИЕ: читаем из window.PRODUCTS_CACHE
   const filtered = (window.PRODUCTS_CACHE || []).filter(p => {
     if (query) {
       const name = (p.name || '').toLowerCase();
@@ -865,10 +909,10 @@ function renderSupplierReturnProductsList() {
       <div class="product-card" onclick="addToCart('${product.id}')">
         <div class="product-card-header">
           <div class="product-name">${product.name}</div>
-          <span class="product-stock">${product.type === 'service' ? 'Услуга' : (product.stock_quantity || 0) + ' шт'}</span>
+          <span class="product-stock">${product.type === 'service' ? 'Услуга' : (product.quantity || 0) + ' шт'}</span>
         </div>
         <div class="product-prices">
-          <div class="product-price">${formatMoney(product.sale_price || 0)}</div>
+          <div class="product-price">${formatMoney(product.base_price || 0)}</div>
         </div>
       </div>
     `;
@@ -910,15 +954,26 @@ window.syncPaymentButtons = syncPaymentButtons;
 window.addToCart = function(productId) {
   const product = (window.PRODUCTS_CACHE || []).find(p => p.id === productId);
   if (!product) return;
+  
   const state = getCurrentState();
   const existing = state.cart.find(item => item.id === productId);
+  
+  // ✅ ПРОВЕРКА: не превышает ли количество в корзине доступный остаток
+  const currentQtyInCart = existing ? existing.quantity : 0;
+  const availableQty = product.type === 'service' ? Infinity : (product.quantity || 0);
+  
+  if (currentQtyInCart + 1 > availableQty) {
+    window.showToast(`❌ Недостаточно товара на складе (доступно: ${availableQty} шт)`, 'error');
+    return;
+  }
+  
   if (existing) {
     existing.quantity++;
   } else {
     state.cart.push({
       id: product.id, 
       name: product.name, 
-      price: product.base_price ?? product.sale_price ?? 0, 
+      price: product.base_price || product.sale_price || 0, 
       quantity: 1,
       type: product.type || 'product',
       purchase_price: product.cost_price || product.purchase_price || 0
@@ -1001,10 +1056,24 @@ window.renderCart = renderCart;
 window.changeQty = function(id, delta) {
   const state = getCurrentState();
   const item = state.cart.find(i => i.id === id);
-  if (item) {
-    item.quantity = Math.max(1, item.quantity + delta);
-    renderCart();
+  if (!item) return;
+  
+  // ✅ ПРОВЕРКА при увеличении: не превышает ли новое количество доступный остаток
+  if (delta > 0) {
+    const product = (window.PRODUCTS_CACHE || []).find(p => p.id === id);
+    if (product) {
+      const availableQty = product.type === 'service' ? Infinity : (product.quantity || 0);
+      const newQty = item.quantity + delta;
+      
+      if (newQty > availableQty) {
+        window.showToast(`❌ Недостаточно товара на складе (доступно: ${availableQty} шт)`, 'error');
+        return;
+      }
+    }
   }
+  
+  item.quantity = Math.max(1, item.quantity + delta);
+  renderCart();
 };
 
 window.removeFromCart = function(id) {
@@ -1191,19 +1260,14 @@ async function loadReportCash() {
   try {
     const { data, error } = await supabase
       .from('cash_transactions')
-      .select('id, type, amount, comment, created_at, sale_id, payment_methods(name), sales(operation_at)')
+      .select('id, type, amount, comment, created_at, sale_id, payment_methods(name)')
       .eq('company_id', COMPANY_ID)
       .gte('created_at', startDate)
-      .lte('created_at', endDate);
+      .lte('created_at', endDate)
+      .order('created_at', { ascending: false });
 
     if (error) throw error;
-    
-    // Сортируем по operation_at (для продаж) или created_at (для расходов)
-    const rows = (data || []).sort((a, b) => {
-      const dateA = a.sales?.operation_at || a.created_at;
-      const dateB = b.sales?.operation_at || b.created_at;
-      return new Date(dateB) - new Date(dateA); // DESC
-    });
+    const rows = data || [];
 
     const income  = rows.filter(r => r.type === 'income');
     const expense = rows.filter(r => r.type === 'expense');
@@ -1253,7 +1317,7 @@ async function loadReportCash() {
                 <td style="padding:10px 8px;color:var(--text-secondary);">${r.payment_methods?.name || '—'}</td>
                 <td style="padding:10px 8px;color:var(--text-secondary);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.comment || '—'}</td>
                 <td style="padding:10px 8px;text-align:right;font-weight:600;color:${color};">${sign}${formatMoney(r.amount)}</td>
-                <td style="padding:10px 8px;text-align:right;color:var(--text-secondary);white-space:nowrap;">${window.formatDate(r.sales?.operation_at || r.created_at)}</td>
+                <td style="padding:10px 8px;text-align:right;color:var(--text-secondary);white-space:nowrap;">${window.formatDate(r.created_at)}</td>
               </tr>`;
           }).join('')}
         </tbody>
@@ -1276,7 +1340,7 @@ async function loadReportSales() {
     const { data, error } = await supabase
       .from('sales')
       .select(`
-        id, total_amount, operation_at, status, comment,
+        id, total_amount, created_at, status, comment,
         discount_percent, discount_amount, source_type,
         payment_methods(name),
         customers(name),
@@ -1284,9 +1348,9 @@ async function loadReportSales() {
       `)
       .eq('company_id', COMPANY_ID)
       .is('deleted_at', null)
-      .gte('operation_at', startDate)
-      .lte('operation_at', endDate)
-      .order('operation_at', { ascending: false });
+      .gte('created_at', startDate)
+      .lte('created_at', endDate)
+      .order('created_at', { ascending: false });
 
     if (error) throw error;
     const rows = data || [];
@@ -1330,7 +1394,7 @@ async function loadReportSales() {
             const rowColor = '';
             return `
               <tr style="border-bottom:1px solid var(--border-color);background:${rowColor};" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='${rowColor}'">
-                <td style="padding:10px 8px;color:var(--text-secondary);white-space:nowrap;">${window.formatDate(r.operation_at)}</td>
+                <td style="padding:10px 8px;color:var(--text-secondary);white-space:nowrap;">${window.formatDate(r.created_at)}</td>
                 <td style="padding:10px 8px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${items}">${items}</td>
                 <td style="padding:10px 8px;color:var(--text-secondary);">${r.customers?.name || r.client || '—'}</td>
                 <td style="padding:10px 8px;color:var(--text-secondary);">${r.payment_methods?.name || '—'}</td>
@@ -1359,7 +1423,7 @@ async function loadReportReturns() {
     const { data, error } = await supabase
       .from('sales')
       .select(`
-        id, total_amount, operation_at, status, comment,
+        id, total_amount, created_at, status, comment,
         discount_percent, discount_amount, source_type,
         payment_methods(name),
         customers(name),
@@ -1368,9 +1432,9 @@ async function loadReportReturns() {
       .eq('company_id', COMPANY_ID)
       .is('deleted_at', null)
       .lt('total_amount', 0)  // Только возвраты (отрицательные суммы)
-      .gte('operation_at', startDate)
-      .lte('operation_at', endDate)
-      .order('operation_at', { ascending: false });
+      .gte('created_at', startDate)
+      .lte('created_at', endDate)
+      .order('created_at', { ascending: false });
 
     if (error) throw error;
     const rows = data || [];
@@ -1405,7 +1469,7 @@ async function loadReportReturns() {
             const items = r.sale_items?.map(i => `${i.products?.name || '?'} ×${Math.abs(i.quantity)}`).join(', ') || '—';
             return `
               <tr style="border-bottom:1px solid var(--border-color);" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''">
-                <td style="padding:10px 8px;color:var(--text-secondary);white-space:nowrap;">${window.formatDate(r.operation_at)}</td>
+                <td style="padding:10px 8px;color:var(--text-secondary);white-space:nowrap;">${window.formatDate(r.created_at)}</td>
                 <td style="padding:10px 8px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${items}">${items}</td>
                 <td style="padding:10px 8px;color:var(--text-secondary);">${r.customers?.name || r.client || '—'}</td>
                 <td style="padding:10px 8px;color:var(--text-secondary);">${r.payment_methods?.name || '—'}</td>
@@ -1519,7 +1583,7 @@ async function loadReportBalance() {
     if (error) throw error;
 
     // фильтруем только товары нашей компании через PRODUCTS_CACHE
-    const myProductIds = new Set((window.PRODUCTS_CACHE || []).map(p => p.id));
+    const myProductIds = new Set(PRODUCTS_CACHE.map(p => p.id));
     const rows = (data || []).filter(r => r.products && myProductIds.has(r.products.id));
 
     const totalQty   = rows.reduce((s, r) => s + Number(r.quantity), 0);
@@ -1599,15 +1663,15 @@ let STOCK_DATA_CACHE = [];
 window.loadProductsTable = async function() {
   if (!COMPANY_ID) return;
   
-  if (!window.PRODUCTS_CACHE || window.PRODUCTS_CACHE.length === 0) {
+  if (!PRODUCTS_CACHE || PRODUCTS_CACHE.length === 0) {
     await loadInitialData();
   }
   
-  const stockData = (window.PRODUCTS_CACHE || []).map(product => ({
+  const stockData = PRODUCTS_CACHE.map(product => ({
     ...product,
-    stock_quantity: Number(product.stock_quantity || 0),
+    stock_quantity: Number(product.quantity || 0),
     purchase_price: Number(product.cost_price || 0),
-    sale_price: Number(product.base_price ?? product.sale_price ?? 0)
+    sale_price: Number(product.base_price || 0)
   }));
   
   renderStockTable(stockData);
@@ -1752,14 +1816,14 @@ window.toggleStockSort = function(col) {
 let _quickStockAction = { productId: null, actionType: null };
 
 window.quickWriteoff = function(productId) {
-  const product = (window.PRODUCTS_CACHE || []).find(p => p.id === productId);
+  const product = PRODUCTS_CACHE.find(p => p.id === productId);
   if (!product) return;
   
   _quickStockAction = { productId, actionType: 'writeoff' };
   
   document.getElementById('quickStockModalTitle').textContent = 'Списание товара';
   document.getElementById('quickStockProductName').textContent = product.name;
-  document.getElementById('quickStockAvailable').textContent = (product.stock_quantity || 0) + ' шт';
+  document.getElementById('quickStockAvailable').textContent = (product.quantity || 0) + ' шт';
   document.getElementById('quickStockQty').value = '';
   document.getElementById('quickStockReason').value = '';
   document.getElementById('quickStockReasonLabel').textContent = 'Причина списания *';
@@ -1771,14 +1835,14 @@ window.quickWriteoff = function(productId) {
 };
 
 window.quickSupplierReturn = function(productId) {
-  const product = (window.PRODUCTS_CACHE || []).find(p => p.id === productId);
+  const product = PRODUCTS_CACHE.find(p => p.id === productId);
   if (!product) return;
   
   _quickStockAction = { productId, actionType: 'supplier_return' };
   
   document.getElementById('quickStockModalTitle').textContent = 'Возврат поставщику';
   document.getElementById('quickStockProductName').textContent = product.name;
-  document.getElementById('quickStockAvailable').textContent = (product.stock_quantity || 0) + ' шт';
+  document.getElementById('quickStockAvailable').textContent = (product.quantity || 0) + ' шт';
   document.getElementById('quickStockQty').value = '';
   document.getElementById('quickStockReason').value = '';
   document.getElementById('quickStockReasonLabel').textContent = 'Комментарий (необязательно)';
@@ -1812,7 +1876,7 @@ window.submitQuickStockModal = async function() {
 async function doQuickStockAction(productId, qty, comment, actionType) {
   try {
     // Берём себестоимость — price > 0 обязателен по constraint БД
-    const product = (window.PRODUCTS_CACHE || []).find(p => p.id === productId);
+    const product = PRODUCTS_CACHE.find(p => p.id === productId);
     const price = product?.purchase_price || product?.cost_price || product?.sale_price || 1;
 
     const items = [{ product_id: productId, quantity: qty, price }];
@@ -1859,7 +1923,13 @@ window.filterStockTable = function() {
   const typeFilter = document.getElementById('stockTypeFilter')?.value || '';
   const statusFilter = document.getElementById('stockStatusFilter')?.value || '';
   
-  const filtered = (window.PRODUCTS_CACHE || [])
+  const filtered = PRODUCTS_CACHE
+    .map(p => ({
+      ...p,
+      stock_quantity: Number(p.quantity || 0),
+      purchase_price: Number(p.cost_price || 0),
+      sale_price: Number(p.base_price || 0)
+    }))
     .filter(p => {
       const matchSearch = !search || 
         (p.name || '').toLowerCase().includes(search) ||
@@ -2122,7 +2192,7 @@ async function createService(name, price) {
 window.filterIncomeProducts = function() {
   const search = document.getElementById('incomeSearchInput')?.value.toLowerCase() || '';
   
-  const filtered = (window.PRODUCTS_CACHE || []).filter(p => {
+  const filtered = PRODUCTS_CACHE.filter(p => {
     return !search || 
       (p.name || '').toLowerCase().includes(search) ||
       (p.sku || '').toLowerCase().includes(search) ||
@@ -2307,8 +2377,8 @@ async function loadMoneyStats() {
       .eq('status', 'completed')
       .gt('total_amount', 0)
       .is('deleted_at', null)
-      .gte('operation_at', startDate)
-      .lte('operation_at', endDate);
+      .gte('created_at', startDate)
+      .lte('created_at', endDate);
     if (salesErr) throw salesErr;
 
     let revenue = 0, cost = 0;
@@ -3086,7 +3156,7 @@ window.saveNewExpense = async function() {
 // РЕДАКТИРОВАНИЕ ТОВАРА СО СКЛАДА
 // =============================================
 window.openEditProduct = function(productId) {
-  const product = (window.PRODUCTS_CACHE || []).find(p => p.id === productId);
+  const product = PRODUCTS_CACHE.find(p => p.id === productId);
   if (!product) return;
 
   document.getElementById('editProductId').value      = product.id;
@@ -3094,7 +3164,7 @@ window.openEditProduct = function(productId) {
   document.getElementById('editProductSku').value     = product.sku  || '';
   document.getElementById('editProductBarcode').value = product.barcode || '';
   document.getElementById('editProductPurchase').value = product.cost_price  || product.purchase_price || 0;
-  document.getElementById('editProductSale').value    = product.base_price   ?? product.sale_price     ?? 0;
+  document.getElementById('editProductSale').value    = product.base_price   || product.sale_price     || 0;
   document.getElementById('editProductUnit').value    = product.unit    || 'шт';
   document.getElementById('editProductComment').value = product.comment || '';
 
@@ -3134,16 +3204,14 @@ window.saveEditProduct = async function() {
     showToast('✅ Товар обновлён');
 
     // Обновляем кеш и таблицу без полной перезагрузки
-    const idx = (window.PRODUCTS_CACHE || []).findIndex(p => p.id === id);
+    const idx = PRODUCTS_CACHE.findIndex(p => p.id === id);
     if (idx !== -1) {
-      window.PRODUCTS_CACHE[idx] = {
-        ...window.PRODUCTS_CACHE[idx],
+      PRODUCTS_CACHE[idx] = {
+        ...PRODUCTS_CACHE[idx],
         name, sku, barcode, purchase_price: purchase,
         cost_price: purchase, sale_price: sale, base_price: sale,
         unit, comment,
       };
-      // Синхронизируем локальную переменную (для обратной совместимости)
-      PRODUCTS_CACHE = window.PRODUCTS_CACHE;
     }
     loadProductsTable();
     renderIncomeProductsList && renderIncomeProductsList();
@@ -3190,11 +3258,11 @@ window.switchProductsTab = function(tabName) {
 window.loadCatalogTable = async function() {
   if (!COMPANY_ID) return;
   
-  if (!window.PRODUCTS_CACHE || window.PRODUCTS_CACHE.length === 0) {
+  if (!PRODUCTS_CACHE || PRODUCTS_CACHE.length === 0) {
     await loadInitialData();
   }
   
-  renderCatalogTable(window.PRODUCTS_CACHE);
+  renderCatalogTable(PRODUCTS_CACHE);
 };
 
 function renderCatalogTable(products) {
@@ -3222,7 +3290,7 @@ function renderCatalogTable(products) {
       <tbody>
         ${products.map(product => {
           const isService = product.type === 'service';
-          const quantity = Number(product.stock_quantity || 0);
+          const quantity = Number(product.quantity || 0);
           const isLow = !isService && quantity > 0 && quantity < 2;
           const isZero = !isService && quantity === 0;
           
@@ -3251,7 +3319,7 @@ function renderCatalogTable(products) {
                 </span>
               </td>
               <td style="text-align:right;color:var(--text-secondary);">${formatMoney(product.cost_price || 0)}</td>
-              <td style="text-align:right;font-weight:600;color:var(--primary-color);">${formatMoney(product.base_price ?? product.sale_price ?? 0)}</td>
+              <td style="text-align:right;font-weight:600;color:var(--primary-color);">${formatMoney(product.base_price || 0)}</td>
               <td style="text-align:center;">${qtyBadge}</td>
               <td style="text-align:center;">
                 <div style="display:flex;gap:4px;justify-content:center;">
@@ -3277,7 +3345,7 @@ window.filterCatalogTable = function() {
   const search = document.getElementById('catalogSearchInput')?.value.toLowerCase() || '';
   const typeFilter = document.getElementById('catalogTypeFilter')?.value || '';
   
-  const filtered = (window.PRODUCTS_CACHE || []).filter(p => {
+  const filtered = PRODUCTS_CACHE.filter(p => {
     const matchSearch = !search || 
       (p.name || '').toLowerCase().includes(search) ||
       (p.sku || '').toLowerCase().includes(search) ||
@@ -3300,11 +3368,11 @@ window.loadStockTable = async function() {
 window.loadIncomeTable = async function() {
   if (!COMPANY_ID) return;
   
-  if (!window.PRODUCTS_CACHE || window.PRODUCTS_CACHE.length === 0) {
+  if (!PRODUCTS_CACHE || PRODUCTS_CACHE.length === 0) {
     await loadInitialData();
   }
   
-  renderIncomeProductsList(window.PRODUCTS_CACHE);
+  renderIncomeProductsList(PRODUCTS_CACHE);
 };
 
 // ─── СОЗДАНИЕ НОВОГО ТОВАРА/УСЛУГИ ────────────────────────────────────────
