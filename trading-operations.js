@@ -1394,8 +1394,8 @@ async function refreshProductsCache() {
           name,
           sku,
           barcode,
-          base_price,
-          cost_price,
+          sale_price,
+          purchase_price,
           type
         )
       `)
@@ -1412,8 +1412,8 @@ async function refreshProductsCache() {
           name: p.name,
           sku: p.sku || '',
           barcode: p.barcode || '',
-          base_price: Number(p.base_price || 0),
-          cost_price: Number(p.cost_price || 0),
+          base_price: Number(p.sale_price || 0),
+          cost_price: Number(p.purchase_price || 0),
           quantity: Number(pb.quantity || 0),  // ✅ Остаток ТОЛЬКО в текущем магазине
           type: p.type || 'product'
         };
