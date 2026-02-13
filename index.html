@@ -1439,7 +1439,8 @@
   <script type="module" src="excel-import.js"></script>
   <script type="module" src="settings.js"></script>
   <script type="module" src="script.js"></script>
-   <script>
+  <script src="mobile-nav.js"></script>
+  <script>
     // Регистрация Service Worker
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
@@ -1548,6 +1549,11 @@
 </div>
 
 <script>
+// УДАЛЕНИЕ DESKTOP SIDEBAR НА МОБИЛЬНЫХ
+if (window.innerWidth <= 768) {
+  document.querySelector('.sidebar')?.remove();
+}
+
 // BARCODE SCANNER
 let quaggaInstance = null;
 
@@ -1567,6 +1573,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   
   // Наблюдаем за всеми кнопками навигации
+  // На мобильных .nav-item не существует (sidebar удалён), forEach просто не выполнится
   document.querySelectorAll('.nav-item').forEach(item => {
     observer.observe(item, { attributes: true });
   });
