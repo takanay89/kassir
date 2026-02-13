@@ -2632,27 +2632,17 @@ body {
   }
 }
 
-/* =========================
-   MOBILE FIX
-========================= */
+/* ============================
+   MOBILE FIX – SALE SCROLL
+   ============================ */
+
 @media (max-width: 768px) {
-
-  .main-layout {
-    display: flex;
-    flex-direction: column;
-    height: auto;
-  }
-
-  .products-section {
-    order: 1;
-    max-height: 50vh;
+  .sale-content,
+  .sale-right,
+  .trade-content {
+    height: calc(100vh - 120px);
     overflow-y: auto;
+    padding-bottom: 120px;
   }
-
-  .cart-section {
-    order: 2;
-    max-height: 40vh;
-    overflow-y: auto;
-  }
-
 }
+
