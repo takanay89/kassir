@@ -3046,3 +3046,68 @@ body {
     height: 180px;
   }
 }
+/* ═══════════════════════════════════════════════════════════════════
+   ФИНАЛЬНЫЕ ВИЗУАЛЬНЫЕ ФИКСЫ ПЕРЕД РЕЛИЗОМ
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ФИКС 1 — ПРИНУДИТЕЛЬНАЯ ВИДИМОСТЬ АКТИВНОЙ ВКЛАДКИ */
+@media (max-width: 768px) {
+  .mobile-nav-item.active {
+    color: #3b82f6 !important;
+    font-weight: 700 !important;
+  }
+  
+  .mobile-nav-item.active::before {
+    content: '' !important;
+    display: block !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 50px !important;
+    height: 4px !important;
+    background: #3b82f6 !important;
+    border-radius: 0 0 4px 4px !important;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.7) !important;
+    z-index: 10 !important;
+  }
+  
+  .mobile-nav-item.active .mobile-nav-icon {
+    color: #3b82f6 !important;
+    stroke: #3b82f6 !important;
+    filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.8)) !important;
+  }
+  
+  .mobile-nav-item.active .mobile-nav-label {
+    color: #3b82f6 !important;
+    font-weight: 700 !important;
+  }
+}
+
+/* ФИКС 2 — РАСТЯЖЕНИЕ ПОИСКА НА ВСЮ ШИРИНУ */
+@media (max-width: 768px) {
+  .search-box-modern {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    box-sizing: border-box !important;
+  }
+  
+  .search-box-modern input {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  
+  #scanBarcodeBtn {
+    flex-shrink: 0 !important;
+    flex-grow: 0 !important;
+  }
+  
+  #clearSearchBtn {
+    flex-shrink: 0 !important;
+    flex-grow: 0 !important;
+  }
+}
