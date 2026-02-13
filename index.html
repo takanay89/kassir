@@ -13,7 +13,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js"></script>
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="mobile-v2.css">
   <style>
     .btn-income-mini {
       padding: 4px 10px;
@@ -89,22 +88,22 @@
           <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
           <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
         </svg>
-        <span class="nav-label">Торговля</span>
+        <span class="nav-label">Касса</span>
       </button>
       <button class="nav-item" data-section="products" onclick="showSection('products')">
         <svg class="nav-icon-svg" style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
         </svg>
-        <span class="nav-label">Склад</span>
+        <span class="nav-label">Товары</span>
       </button>
-      <button class="nav-item" data-section="suppliers" onclick="showSection('suppliers')" data-mobile-hidden="true">
+      <button class="nav-item" data-section="suppliers" onclick="showSection('suppliers')">
         <svg class="nav-icon-svg" style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
           <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
         </svg>
         <span class="nav-label">Поставщики</span>
       </button>
-      <button class="nav-item" data-section="clients" onclick="showSection('clients')" data-mobile-hidden="true">
+      <button class="nav-item" data-section="clients" onclick="showSection('clients')">
         <svg class="nav-icon-svg" style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
           <circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
@@ -131,7 +130,7 @@
         </svg>
         <span class="nav-label">Деньги</span>
       </button>
-      <button class="nav-item" data-section="settings" onclick="showSection('settings')" data-mobile-hidden="true">
+      <button class="nav-item" data-section="settings" onclick="showSection('settings')">
         <svg class="nav-icon-svg" style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="3"/>
           <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"/>
@@ -1553,6 +1552,39 @@
 // BARCODE SCANNER
 let quaggaInstance = null;
 
+// Mobile Navigation Sync
+document.addEventListener('DOMContentLoaded', function() {
+  // Синхронизация мобильного меню с desktop меню
+  const observer = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+      if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+        const target = mutation.target;
+        if (target.classList.contains('nav-item') && target.classList.contains('active')) {
+          const section = target.dataset.section;
+          updateMobileNavigation(section);
+        }
+      }
+    });
+  });
+  
+  // Наблюдаем за всеми кнопками навигации
+  document.querySelectorAll('.nav-item').forEach(item => {
+    observer.observe(item, { attributes: true });
+  });
+});
+
+function updateMobileNavigation(section) {
+  // Обновляем мобильное меню
+  const mobileItems = document.querySelectorAll('.mobile-nav-item');
+  mobileItems.forEach(item => {
+    if (item.dataset.section === section) {
+      item.classList.add('active');
+    } else {
+      item.classList.remove('active');
+    }
+  });
+}
+
 window.openBarcodeScanner = function() {
   const modal = document.getElementById('barcodeScannerModal');
   if (!modal) return;
@@ -1639,6 +1671,27 @@ function addProductByBarcode(barcode) {
   }
 }
 
+// Mobile Drawer Menu Functions
+function openMobileDrawer() {
+  const drawer = document.getElementById('mobileDrawer');
+  const overlay = document.getElementById('mobileDrawerOverlay');
+  if (drawer && overlay) {
+    drawer.classList.add('active');
+    overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function closeMobileDrawer() {
+  const drawer = document.getElementById('mobileDrawer');
+  const overlay = document.getElementById('mobileDrawerOverlay');
+  if (drawer && overlay) {
+    drawer.classList.remove('active');
+    overlay.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+}
+
 function showToast(message) {
   const toast = document.createElement('div');
   toast.textContent = message;
@@ -1651,6 +1704,86 @@ function showToast(message) {
   }, 2500);
 }
 </script>
+
+<!-- MOBILE BOTTOM NAVIGATION -->
+<nav class="mobile-bottom-nav" id="mobileBottomNav">
+  <button class="mobile-nav-item active" data-section="trading" onclick="showSection('trading')">
+    <svg class="mobile-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+      <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+    </svg>
+    <span class="mobile-nav-label">Торговля</span>
+  </button>
+  
+  <button class="mobile-nav-item" data-section="products" onclick="showSection('products')">
+    <svg class="mobile-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+    </svg>
+    <span class="mobile-nav-label">Склад</span>
+  </button>
+  
+  <button class="mobile-nav-item" data-section="expenses" onclick="showSection('expenses')">
+    <svg class="mobile-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+    </svg>
+    <span class="mobile-nav-label">Расходы</span>
+  </button>
+  
+  <button class="mobile-nav-item" data-section="money" onclick="showSection('money')">
+    <svg class="mobile-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+    </svg>
+    <span class="mobile-nav-label">Деньги</span>
+  </button>
+  
+  <button class="mobile-nav-item" data-section="reports" onclick="showSection('reports')">
+    <svg class="mobile-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+      <line x1="6" y1="20" x2="6" y2="14"/>
+    </svg>
+    <span class="mobile-nav-label">Отчёты</span>
+  </button>
+</nav>
+
+<!-- MOBILE DRAWER MENU (Ещё) -->
+<div class="mobile-drawer-overlay" id="mobileDrawerOverlay" onclick="closeMobileDrawer()"></div>
+<div class="mobile-drawer" id="mobileDrawer">
+  <div class="mobile-drawer-header">
+    <h3 class="mobile-drawer-title">Меню</h3>
+    <button class="mobile-drawer-close" onclick="closeMobileDrawer()">×</button>
+  </div>
+  <div class="mobile-drawer-content">
+    <button class="mobile-drawer-item" data-section="clients" onclick="showSection('clients'); closeMobileDrawer();">
+      <svg class="mobile-drawer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+      <span>Клиенты</span>
+    </button>
+    <button class="mobile-drawer-item" data-section="suppliers" onclick="showSection('suppliers'); closeMobileDrawer();">
+      <svg class="mobile-drawer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+        <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+      </svg>
+      <span>Поставщики</span>
+    </button>
+    <button class="mobile-drawer-item" data-section="settings" onclick="showSection('settings'); closeMobileDrawer();">
+      <svg class="mobile-drawer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"/>
+      </svg>
+      <span>Настройки</span>
+    </button>
+  </div>
+</div>
+
+<!-- MOBILE MENU BUTTON (Ещё) -->
+<button class="mobile-menu-btn" id="mobileMenuBtn" onclick="openMobileDrawer()">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
+  </svg>
+</button>
 
 </body>
 </html>
