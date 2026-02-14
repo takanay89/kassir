@@ -219,7 +219,7 @@ async function loadSalesStats() {
       .select(`
         id, 
         total_amount, 
-        created_at, 
+        operation_at, 
         payment_method,
         sale_items (
           product_id,
@@ -229,10 +229,10 @@ async function loadSalesStats() {
       `)
       .eq('company_id', window.COMPANY_ID)
       .eq('status', 'completed')
-      .gte('created_at', startDate)
-      .lte('created_at', endDate)
+      .gte('operation_at', startDate)
+      .lte('operation_at', endDate)
       .is('deleted_at', null)
-      .order('created_at', { ascending: false });
+      .order('operation_at', { ascending: false });
     
     if (error) {
       console.error('Error loading sales stats:', error);
@@ -313,7 +313,7 @@ function renderSalesOperations(sales) {
               <td>${products}</td>
               <td>${paymentMethodName}</td>
               <td>${window.formatMoney(sale.total_amount)}</td>
-              <td>${window.formatDate(sale.created_at)}</td>
+              <td>${window.formatDate(sale.operation_at)}</td>
               ${canDelete ? `<td><button class="btn-delete-mini" onclick="deleteSaleOperation('${sale.id}')" title="Удалить">×</button></td>` : ''}
             </tr>
           `;
@@ -345,14 +345,14 @@ async function loadIncomeStats() {
   try {
     const { data, error } = await supabase
       .from('stock_movements')
-      .select('id, total, created_at, comment')
+      .select('id, total, operation_at, comment')
       .eq('company_id', window.COMPANY_ID)
       .eq('type', 'in')
       .eq('reason', 'purchase')
-      .gte('created_at', startDate)
-      .lte('created_at', endDate)
+      .gte('operation_at', startDate)
+      .lte('operation_at', endDate)
       .is('deleted_at', null)
-      .order('created_at', { ascending: false});
+      .order('operation_at', { ascending: false});
     
     if (error) {
       console.error('Error loading income stats:', error);
@@ -408,7 +408,7 @@ function renderIncomeOperations(movements) {
         ${canDelete ? `<button class="btn-delete-mini" onclick="deleteIncomeOperation('${mov.id}')" title="Удалить">×</button>` : ''}
       </div>
       <div class="operation-details">
-        ${window.formatDate(mov.created_at)}
+        ${window.formatDate(mov.operation_at)}
       </div>
       ${mov.comment ? `<div class="operation-meta"><span class="comment-text">${mov.comment}</span></div>` : ''}
     </div>
@@ -440,7 +440,7 @@ async function loadReturnStats() {
       .select(`
         id, 
         total_amount, 
-        created_at, 
+        operation_at, 
         related_sale_id,
         sale_items (
           product_id,
@@ -451,10 +451,10 @@ async function loadReturnStats() {
       .eq('company_id', window.COMPANY_ID)
       .eq('status', 'completed')
       .not('related_sale_id', 'is', null)
-      .gte('created_at', startDate)
-      .lte('created_at', endDate)
+      .gte('operation_at', startDate)
+      .lte('operation_at', endDate)
       .is('deleted_at', null)
-      .order('created_at', { ascending: false });
+      .order('operation_at', { ascending: false });
     
     if (error) {
       console.error('Error loading return stats:', error);
@@ -530,7 +530,7 @@ function renderReturnOperations(returns) {
               <td>${products}</td>
               <td>${barcodes}</td>
               <td>${window.formatMoney(Math.abs(ret.total_amount))}</td>
-              <td>${window.formatDate(ret.created_at)}</td>
+              <td>${window.formatDate(ret.operation_at)}</td>
               ${canDelete ? `<td><button class="btn-delete-mini" onclick="deleteReturnOperation('${ret.id}')" title="Удалить">×</button></td>` : ''}
             </tr>
           `;
@@ -552,7 +552,7 @@ async function loadRecentSalesForReturn() {
       .select(`
         id, 
         total_amount, 
-        created_at,
+        operation_at,
         payment_method,
         payment_methods (name),
         sale_items (
@@ -566,10 +566,10 @@ async function loadRecentSalesForReturn() {
       `)
       .eq('company_id', window.COMPANY_ID)
       .eq('status', 'completed')
-      .gte('created_at', thirtyDaysAgo.toISOString())
+      .gte('operation_at', thirtyDaysAgo.toISOString())
       .is('deleted_at', null)
       .is('related_sale_id', null)   // только оригинальные продажи (не возвраты)
-      .order('created_at', { ascending: false })
+      .order('operation_at', { ascending: false })
       .limit(50);
     
     if (error) throw error;
@@ -629,7 +629,7 @@ function renderRecentSales(sales) {
           const paymentName = sale.payment_methods?.name || '—';
           return `
             <tr>
-              <td class="col-date">${window.formatDate(sale.created_at)}</td>
+              <td class="col-date">${window.formatDate(sale.operation_at)}</td>
               <td class="col-items"><span class="cell-truncate">${itemsText}</span></td>
               <td class="col-payment">${paymentName}</td>
               <td class="col-amount">${window.formatMoney(sale.total_amount)}</td>
@@ -658,7 +658,7 @@ window.searchRecentSales = function() {
   const filtered = RECENT_SALES_CACHE.filter(sale => {
     if (!sale.sale_items || !sale.sale_items.length) return false;
     
-    const dateStr = window.formatDate(sale.created_at).toLowerCase();
+    const dateStr = window.formatDate(sale.operation_at).toLowerCase();
     const amountStr = String(sale.total_amount).toLowerCase();
     
     const hasMatchingItem = sale.sale_items.some(item => {
@@ -698,7 +698,7 @@ window.selectSaleForReturn = function(saleId) {
   const searchCard = document.getElementById('returnSearchCard');
   if (banner && infoEl) {
     const itemsText = sale.sale_items.map(i => i.products?.name || 'Товар').join(', ');
-    const date = window.formatDate ? window.formatDate(sale.created_at) : sale.created_at;
+    const date = window.formatDate ? window.formatDate(sale.operation_at) : sale.operation_at;
     infoEl.textContent = `${date} · ${window.formatMoney(sale.total_amount)} · ${itemsText}`;
     banner.style.display = 'block';
   }
@@ -742,14 +742,14 @@ async function loadWriteoffStats() {
   try {
     const { data, error } = await supabase
       .from('stock_movements')
-      .select('id, total, created_at, comment')
+      .select('id, total, operation_at, comment')
       .eq('company_id', window.COMPANY_ID)
       .eq('type', 'out')
       .eq('reason', 'write_off')
-      .gte('created_at', startDate)
-      .lte('created_at', endDate)
+      .gte('operation_at', startDate)
+      .lte('operation_at', endDate)
       .is('deleted_at', null)
-      .order('created_at', { ascending: false });
+      .order('operation_at', { ascending: false });
     
     if (error) {
       console.error('Error loading writeoff stats:', error);
@@ -805,7 +805,7 @@ function renderWriteoffOperations(movements) {
         ${canDelete ? `<button class="btn-delete-mini" onclick="deleteWriteoffOperation('${mov.id}')" title="Удалить">×</button>` : ''}
       </div>
       <div class="operation-details">
-        ${window.formatDate(mov.created_at)}
+        ${window.formatDate(mov.operation_at)}
       </div>
       ${mov.comment ? `<div class="operation-meta"><span class="comment-text">${mov.comment}</span></div>` : ''}
     </div>
@@ -834,14 +834,14 @@ async function loadSupplierReturnStats() {
   try {
     const { data, error } = await supabase
       .from('stock_movements')
-      .select('id, total, created_at, comment')
+      .select('id, total, operation_at, comment')
       .eq('company_id', window.COMPANY_ID)
       .eq('type', 'out')
       .eq('reason', 'supplier_return')
-      .gte('created_at', startDate)
-      .lte('created_at', endDate)
+      .gte('operation_at', startDate)
+      .lte('operation_at', endDate)
       .is('deleted_at', null)
-      .order('created_at', { ascending: false });
+      .order('operation_at', { ascending: false });
     
     if (error) {
       console.error('Error loading supplier return stats:', error);
@@ -897,7 +897,7 @@ function renderSupplierReturnOperations(movements) {
         ${canDelete ? `<button class="btn-delete-mini" onclick="deleteSupplierReturnOperation('${mov.id}')" title="Удалить">×</button>` : ''}
       </div>
       <div class="operation-details">
-        ${window.formatDate(mov.created_at)}
+        ${window.formatDate(mov.operation_at)}
       </div>
       ${mov.comment ? `<div class="operation-meta"><span class="comment-text">${mov.comment}</span></div>` : ''}
     </div>
