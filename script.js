@@ -402,7 +402,8 @@ window.getIncomeDestination = getIncomeDestination;
 // Шаг 2: если destStoreId — OUT со склада + IN в магазин
 // =============================================
 async function insertIncomeWithTransfer({ companyId, productId, quantity, price, warehouseId, destStoreId, reason = 'purchase' }) {
-  const operation_at = new Date().toISOString();
+  const manualTime = document.getElementById('operationTimeInput')?.value;
+  const operation_at = manualTime ? new Date(manualTime).toISOString() : new Date().toISOString();
   const wh = warehouseId || window.WAREHOUSE_CACHE || null;
 
   // Приход ТОЛЬКО на склад
@@ -1136,10 +1137,6 @@ window.showSection = function(name) {
     highlightSelectedStore();
     if (typeof window.onShowSettings === 'function') window.onShowSettings();
   }
-
-  // mobile nav sync
-  document.querySelectorAll('.mobile-nav-item')
-    .forEach(b => b.classList.toggle('active', b.dataset.section === name));
 };
 
 // Права доступа по разделам
