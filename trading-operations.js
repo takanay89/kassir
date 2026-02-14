@@ -986,6 +986,10 @@ async function submitSale() {
 
     console.log("ITEMS FOR RPC:", items);
 
+    // Получаем время операции из input или текущее время
+    const manualTime = document.getElementById('operationTimeInput')?.value;
+    const operation_at = manualTime ? new Date(manualTime).toISOString() : new Date().toISOString();
+
     // Вызываем атомарную RPC функцию
     const { data, error } = await supabase.rpc('process_sale', {
       p_company_id:        window.COMPANY_ID,
@@ -995,7 +999,8 @@ async function submitSale() {
       p_customer_id:       state.selectedClientId || null,
       p_comment:           comment,
       p_items:             items,
-      p_warehouse_id:      null
+      p_warehouse_id:      null,
+      p_operation_at:      operation_at
     });
     
     if (error) throw error;
@@ -1130,6 +1135,10 @@ async function submitIncome() {
       cost_price: item.price
     }));
     
+    // Получаем время операции из input или текущее время
+    const manualTime = document.getElementById('operationTimeInput')?.value;
+    const operation_at = manualTime ? new Date(manualTime).toISOString() : new Date().toISOString();
+    
     // Вызов RPC с ПРАВИЛЬНЫМИ параметрами
     const { data, error } = await supabase.rpc('create_purchase_document', {
       p_company_id: window.COMPANY_ID,
@@ -1137,7 +1146,8 @@ async function submitIncome() {
       p_payment_method: state.selectedPaymentId,
       p_supplier_id: null,  // ✅ Правильное имя параметра
       p_items: items,
-      p_comment: comment
+      p_comment: comment,
+      p_operation_at: operation_at
     });
     
     if (error) throw error;
@@ -1205,6 +1215,10 @@ async function submitReturn() {
       cost_price: item.purchase_price || 0
     }));
 
+    // Получаем время операции из input или текущее время
+    const manualTime = document.getElementById('operationTimeInput')?.value;
+    const operation_at = manualTime ? new Date(manualTime).toISOString() : new Date().toISOString();
+
     const { data, error } = await supabase.rpc('process_return', {
       p_company_id:        window.COMPANY_ID,
       p_store_location_id: window.STORE_LOCATION_ID,
@@ -1214,7 +1228,8 @@ async function submitReturn() {
       p_customer_id:       null,
       p_comment:           comment,
       p_items:             items,
-      p_warehouse_id:      null
+      p_warehouse_id:      null,
+      p_operation_at:      operation_at
     });
     
     if (error) throw error;
@@ -1280,12 +1295,17 @@ async function submitWriteoff() {
       price: item.purchase_price || item.price || 1  // price > 0 обязателен в БД
     }));
 
+    // Получаем время операции из input или текущее время
+    const manualTime = document.getElementById('operationTimeInput')?.value;
+    const operation_at = manualTime ? new Date(manualTime).toISOString() : new Date().toISOString();
+
     const { data, error } = await supabase.rpc('process_writeoff', {
       p_company_id: window.COMPANY_ID,
       p_store_location_id: window.STORE_LOCATION_ID,
       p_warehouse_id: null,   // RPC сам найдёт единственный склад
       p_comment: comment,
-      p_items: items
+      p_items: items,
+      p_operation_at: operation_at
     });
 
     if (error) throw error;
