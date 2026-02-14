@@ -1355,7 +1355,7 @@ async function loadReportSales() {
     const { data, error } = await supabase
       .from('sales')
       .select(`
-        id, total_amount, created_at, status, comment,
+        id, total_amount, operation_at, status, comment,
         discount_percent, discount_amount, source_type,
         payment_methods(name),
         customers(name),
@@ -1363,9 +1363,9 @@ async function loadReportSales() {
       `)
       .eq('company_id', COMPANY_ID)
       .is('deleted_at', null)
-      .gte('created_at', startDate)
-      .lte('created_at', endDate)
-      .order('created_at', { ascending: false });
+      .gte('operation_at', startDate)
+      .lte('operation_at', endDate)
+      .order('operation_at', { ascending: false });
 
     if (error) throw error;
     const rows = data || [];
@@ -1409,7 +1409,7 @@ async function loadReportSales() {
             const rowColor = '';
             return `
               <tr style="border-bottom:1px solid var(--border-color);background:${rowColor};" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='${rowColor}'">
-                <td style="padding:10px 8px;color:var(--text-secondary);white-space:nowrap;">${window.formatDate(r.created_at)}</td>
+                <td style="padding:10px 8px;color:var(--text-secondary);white-space:nowrap;">${window.formatDate(r.operation_at)}</td>
                 <td style="padding:10px 8px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${items}">${items}</td>
                 <td style="padding:10px 8px;color:var(--text-secondary);">${r.customers?.name || r.client || '—'}</td>
                 <td style="padding:10px 8px;color:var(--text-secondary);">${r.payment_methods?.name || '—'}</td>
@@ -1438,7 +1438,7 @@ async function loadReportReturns() {
     const { data, error } = await supabase
       .from('sales')
       .select(`
-        id, total_amount, created_at, status, comment,
+        id, total_amount, operation_at, status, comment,
         discount_percent, discount_amount, source_type,
         payment_methods(name),
         customers(name),
@@ -1447,9 +1447,9 @@ async function loadReportReturns() {
       .eq('company_id', COMPANY_ID)
       .is('deleted_at', null)
       .lt('total_amount', 0)  // Только возвраты (отрицательные суммы)
-      .gte('created_at', startDate)
-      .lte('created_at', endDate)
-      .order('created_at', { ascending: false });
+      .gte('operation_at', startDate)
+      .lte('operation_at', endDate)
+      .order('operation_at', { ascending: false });
 
     if (error) throw error;
     const rows = data || [];
@@ -1484,7 +1484,7 @@ async function loadReportReturns() {
             const items = r.sale_items?.map(i => `${i.products?.name || '?'} ×${Math.abs(i.quantity)}`).join(', ') || '—';
             return `
               <tr style="border-bottom:1px solid var(--border-color);" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''">
-                <td style="padding:10px 8px;color:var(--text-secondary);white-space:nowrap;">${window.formatDate(r.created_at)}</td>
+                <td style="padding:10px 8px;color:var(--text-secondary);white-space:nowrap;">${window.formatDate(r.operation_at)}</td>
                 <td style="padding:10px 8px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${items}">${items}</td>
                 <td style="padding:10px 8px;color:var(--text-secondary);">${r.customers?.name || r.client || '—'}</td>
                 <td style="padding:10px 8px;color:var(--text-secondary);">${r.payment_methods?.name || '—'}</td>
@@ -2392,8 +2392,8 @@ async function loadMoneyStats() {
       .eq('status', 'completed')
       .gt('total_amount', 0)
       .is('deleted_at', null)
-      .gte('created_at', startDate)
-      .lte('created_at', endDate);
+      .gte('operation_at', startDate)
+      .lte('operation_at', endDate);
     if (salesErr) throw salesErr;
 
     let revenue = 0, cost = 0;
