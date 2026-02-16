@@ -98,6 +98,19 @@ async function loadSettingsCompany() {
       </div>
     `).join('');
   }
+
+  // Загрузка Kaspi API токена
+  const { data: kaspiIntegration } = await supabase
+    .from('company_integrations')
+    .select('api_token')
+    .eq('company_id', companyId)
+    .eq('provider', 'kaspi')
+    .single();
+  
+  const kaspiTokenInput = document.getElementById('kaspiApiToken');
+  if (kaspiTokenInput && kaspiIntegration?.api_token) {
+    kaspiTokenInput.value = kaspiIntegration.api_token;
+  }
 }
 
 window.saveCompanyName = async function() {
@@ -110,6 +123,51 @@ window.saveCompanyName = async function() {
   if (error) return showToast('Ошибка: ' + error.message, 'error');
   document.getElementById('companyName').textContent = name;
   showToast('Название сохранено ✅');
+};
+
+// Сохранение Kaspi API токена
+window.saveKaspiToken = async function() {
+  const token = document.getElementById('kaspiApiToken').value.trim();
+  if (!token) return showToast('Введите токен', 'error');
+
+  try {
+    // Получаем текущего пользователя
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      return showToast('Ошибка получения пользователя', 'error');
+    }
+
+    // Находим компанию пользователя
+    const { data: link, error: linkError } = await supabase
+      .from('company_users')
+      .select('company_id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (linkError || !link) {
+      return showToast('Компания не найдена', 'error');
+    }
+
+    // Сохраняем токен (UPSERT)
+    const { error: upsertError } = await supabase
+      .from('company_integrations')
+      .upsert({
+        company_id: link.company_id,
+        provider: 'kaspi',
+        api_token: token,
+        active: true
+      }, {
+        onConflict: 'company_id,provider'
+      });
+
+    if (upsertError) {
+      return showToast('Ошибка сохранения: ' + upsertError.message, 'error');
+    }
+
+    showToast('Kaspi токен сохранён ✅');
+  } catch (err) {
+    showToast('Произошла ошибка: ' + err.message, 'error');
+  }
 };
 
 // Торговая точка
