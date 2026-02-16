@@ -555,6 +555,7 @@
         <button class="report-tab-btn"        data-tab="returns" onclick="switchReportTab('returns')"   style="padding:10px 18px;background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-secondary);border-bottom:2px solid transparent;margin-bottom:-2px;white-space:nowrap;">Возвраты</button>
         <button class="report-tab-btn"        data-tab="stock"   onclick="switchReportTab('stock')"     style="padding:10px 18px;background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-secondary);border-bottom:2px solid transparent;margin-bottom:-2px;white-space:nowrap;">Движение товаров</button>
         <button class="report-tab-btn"        data-tab="balance" onclick="switchReportTab('balance')"   style="padding:10px 18px;background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-secondary);border-bottom:2px solid transparent;margin-bottom:-2px;white-space:nowrap;">Остатки</button>
+        <button class="report-tab-btn"        data-tab="kaspi"   onclick="switchReportTab('kaspi')"     style="padding:10px 18px;background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-secondary);border-bottom:2px solid transparent;margin-bottom:-2px;white-space:nowrap;">Kaspi</button>
       </div>
 
       <!-- ТАБ 1: Все операции (cash_transactions) -->
@@ -659,6 +660,59 @@
             </div>
           </div>
           <div id="rBalanceTable"><div style="text-align:center;padding:20px;color:var(--text-secondary);">Загрузка...</div></div>
+        </div>
+      </div>
+
+      <!-- ТАБ 5: KASPI -->
+      <div id="reportTab-kaspi" style="display:none;">
+        <!-- Kaspi Tabs -->
+        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+          <button class="kaspi-tab-btn active" data-kaspi-tab="summary" onclick="switchKaspiTab('summary')" style="padding:8px 16px;background:var(--primary-color);color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">Сводка</button>
+          <button class="kaspi-tab-btn" data-kaspi-tab="orders" onclick="switchKaspiTab('orders')" style="padding:8px 16px;background:var(--bg-secondary);color:var(--text-secondary);border:1px solid var(--border-color);border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">Заказы</button>
+          <button class="kaspi-tab-btn" data-kaspi-tab="products" onclick="switchKaspiTab('products')" style="padding:8px 16px;background:var(--bg-secondary);color:var(--text-secondary);border:1px solid var(--border-color);border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">Товары</button>
+        </div>
+
+        <!-- Kaspi Summary -->
+        <div id="kaspi-tab-summary">
+          <div class="card">
+            <div class="stats-grid" style="margin-bottom:16px;">
+              <div class="stat-card">
+                <div class="stat-label">Выручка</div>
+                <div class="stat-value" id="kaspiRevenue" style="color:#10b981;">0 ₸</div>
+                <div class="stat-count" id="kaspiOrdersCount">0 заказов</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Комиссия</div>
+                <div class="stat-value" id="kaspiCommission" style="color:#f59e0b;">0 ₸</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Доставка</div>
+                <div class="stat-value" id="kaspiDelivery" style="color:#f59e0b;">0 ₸</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Себестоимость</div>
+                <div class="stat-value" id="kaspiCost" style="color:#f59e0b;">0 ₸</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Чистая прибыль</div>
+                <div class="stat-value" id="kaspiProfit">0 ₸</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Kaspi Orders -->
+        <div id="kaspi-tab-orders" style="display:none;">
+          <div class="card">
+            <div id="kaspiOrdersTable"><div style="text-align:center;padding:20px;color:var(--text-secondary);">Загрузка...</div></div>
+          </div>
+        </div>
+
+        <!-- Kaspi Products -->
+        <div id="kaspi-tab-products" style="display:none;">
+          <div class="card">
+            <div id="kaspiProductsTable"><div style="text-align:center;padding:20px;color:var(--text-secondary);">Загрузка...</div></div>
+          </div>
         </div>
       </div>
 
@@ -860,6 +914,20 @@
             <button class="btn-secondary" onclick="openNewWarehouseModal()">+ Добавить</button>
           </div>
           <div id="warehousesList"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Kaspi API</div>
+          <div class="form-group">
+            <label class="label">API Token</label>
+            <div style="display:flex;gap:8px;">
+              <input type="password" id="kaspiApiToken" class="input" placeholder="Введите Kaspi API токен" style="flex:1;">
+              <button class="btn-secondary" onclick="saveKaspiToken()">Сохранить</button>
+            </div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:8px;">
+              Токен используется для синхронизации заказов с Kaspi
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1471,6 +1539,7 @@
   <script type="module" src="trading-operations.js"></script>
   <script type="module" src="excel-import.js"></script>
   <script type="module" src="settings.js"></script>
+  <script type="module" src="kaspi-reports.js"></script>
   <script type="module" src="script.js"></script>
   <script src="mobile-nav.js"></script>
   <script>
