@@ -1,32 +1,34 @@
 // ============================================
-// MOBILE NAVIGATION SYNC FIX
+// MOBILE NAVIGATION SYNC FIX (STABLE)
 // ============================================
 
-// Store original showSection if it exists
-const originalShowSection = window.showSection;
-
-// Override showSection to update mobile nav
-window.showSection = function(section) {
-  // Call original showSection
-  if (typeof originalShowSection === 'function') {
-    originalShowSection(section);
+// Ждём, пока оригинальная showSection появится
+function waitForShowSection() {
+  if (typeof window.showSection !== 'function') {
+    setTimeout(waitForShowSection, 20);
+    return;
   }
-  
-  // Update mobile navigation immediately
-  updateMobileNavigation(section);
-};
+
+  const originalShowSection = window.showSection;
+
+  window.showSection = function(section) {
+    // вызываем оригинал
+    originalShowSection(section);
+
+    // синхронизация мобильной навигации
+    updateMobileNavigation(section);
+  };
+}
 
 function updateMobileNavigation(section) {
-  // Update mobile menu
   const mobileItems = document.querySelectorAll('.mobile-nav-item');
   mobileItems.forEach(item => {
-    if (item.dataset.section === section) {
-      item.classList.add('active');
-    } else {
-      item.classList.remove('active');
-    }
+    item.classList.toggle('active', item.dataset.section === section);
   });
 }
 
-// Export for inline usage
+// Экспорт
 window.updateMobileNavigation = updateMobileNavigation;
+
+// Старт
+waitForShowSection();
