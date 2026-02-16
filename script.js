@@ -505,7 +505,7 @@ async function loadInitialData() {
       if (currentSection === 'products') loadProductsTable();
       
     } catch (err) {
-      console.error('❌ Ошибка сервера:', error.message, error);
+      console.error('❌ Ошибка сервера:', err.message, err);
       PRODUCTS_CACHE = await getProductsFromLocal() || [];
       window.PRODUCTS_CACHE = PRODUCTS_CACHE;
       
@@ -538,19 +538,20 @@ async function loadInitialData() {
 }
 
 async function loadAllProductsFromServer() {
-  // ✅ КРИТИЧНО: грузим ТОЛЬКО остатки текущего магазина из product_balances
+
+  // 1️⃣ Загружаем ВСЕ товары
+  const { data: products, error } = await supabase
+    .from('products')
+    .select('id, name, sku, barcode, sale_price, purchase_price, type, inventory_mode')
+    .eq('company_id', COMPANY_ID)
+    .eq('active', true)
+    .order('name');
+
+  if (error) throw error;
+
+  // Если магазин не выбран
   if (!window.STORE_LOCATION_ID) {
-    console.warn('⚠️ Магазин не выбран, загружаем все товары без остатков');
-    const { data, error } = await supabase
-      .from('products')
-      .select('id, name, sku, barcode, sale_price, purchase_price, type')
-      .eq('company_id', COMPANY_ID)
-      .eq('active', true)
-      .order('name');
-    
-    if (error) throw error;
-    
-    return (data || []).map(p => ({
+    return (products || []).map(p => ({
       id: p.id,
       name: p.name,
       sku: p.sku || '',
@@ -558,46 +559,36 @@ async function loadAllProductsFromServer() {
       base_price: Number(p.sale_price || 0),
       cost_price: Number(p.purchase_price || 0),
       quantity: 0,
-      type: p.type || 'product'
+      type: p.type || 'product',
+      inventory_mode: p.inventory_mode || 'stock'
     }));
   }
-  
-  // Грузим товары с остатками ТОЛЬКО в текущем магазине
-  const { data, error } = await supabase
-    .from('product_balances')
-    .select(`
-      quantity,
-      product_id,
-      products!inner (
-        id,
-        name,
-        sku,
-        barcode,
-        sale_price,
-        purchase_price,
-        type
-      )
-    `)
-    .eq('store_location_id', window.STORE_LOCATION_ID);
-  
-  if (error) throw error;
 
-  console.log("PRODUCT_BALANCES DATA (store_location_id:", window.STORE_LOCATION_ID, "):", data);
-  
-  return (data || []).map(pb => {
-    const p = pb.products;
-    return {
-      id: p.id,
-      name: p.name,
-      sku: p.sku || '',
-      barcode: p.barcode || '',
-      base_price: Number(p.sale_price || 0),
-      cost_price: Number(p.purchase_price || 0),
-      quantity: Number(pb.quantity || 0),  // ✅ Остаток ТОЛЬКО в текущем магазине
-      type: p.type || 'product'
-    };
+  // 2️⃣ Загружаем остатки текущего магазина
+  const { data: balances } = await supabase
+    .from('product_balances')
+    .select('product_id, quantity')
+    .eq('store_location_id', window.STORE_LOCATION_ID);
+
+  const balanceMap = new Map();
+  (balances || []).forEach(b => {
+    balanceMap.set(b.product_id, Number(b.quantity || 0));
   });
+
+  // 3️⃣ Объединяем товары + остатки
+  return (products || []).map(p => ({
+    id: p.id,
+    name: p.name,
+    sku: p.sku || '',
+    barcode: p.barcode || '',
+    base_price: Number(p.sale_price || 0),
+    cost_price: Number(p.purchase_price || 0),
+    quantity: balanceMap.get(p.id) || 0,
+    type: p.type || 'product',
+    inventory_mode: p.inventory_mode || 'stock'
+  }));
 }
+
 
 async function loadPaymentMethodsFromServer() {
   console.log('🔍 loadPaymentMethodsFromServer: COMPANY_ID =', COMPANY_ID);
@@ -973,14 +964,18 @@ window.addToCart = function(productId) {
   const state = getCurrentState();
   const existing = state.cart.find(item => item.id === productId);
   
-  // ✅ ПРОВЕРКА: не превышает ли количество в корзине доступный остаток
-  const currentQtyInCart = existing ? existing.quantity : 0;
-  const availableQty = product.type === 'service' ? Infinity : (product.quantity || 0);
-  
+// ✅ ПРОВЕРКА остатка с учетом inventory_mode
+
+const currentQtyInCart = existing ? existing.quantity : 0;
+const availableQty = product.type === 'service' ? Infinity : (product.quantity || 0);
+
+// 🔥 Если товар строгий складской — проверяем остаток
+if (product.inventory_mode !== 'on_demand') {
   if (currentQtyInCart + 1 > availableQty) {
     window.showToast(`❌ Недостаточно товара на складе (доступно: ${availableQty} шт)`, 'error');
     return;
   }
+}
   
   if (existing) {
     existing.quantity++;
@@ -1076,7 +1071,7 @@ window.changeQty = function(id, delta) {
   // ✅ ПРОВЕРКА при увеличении: не превышает ли новое количество доступный остаток
   if (delta > 0) {
     const product = (window.PRODUCTS_CACHE || []).find(p => p.id === id);
-    if (product) {
+    if (product && product.inventory_mode !== 'on_demand') {
       const availableQty = product.type === 'service' ? Infinity : (product.quantity || 0);
       const newQty = item.quantity + delta;
       
@@ -1226,7 +1221,7 @@ let currentReportTab = 'cash';
 window.switchReportTab = function(tab) {
   currentReportTab = tab;
   // переключаем видимость контента
-  ['cash','sales','returns','stock','balance'].forEach(t => {
+  ['cash','sales','returns','stock','balance','kaspi'].forEach(t => {
     const el = document.getElementById(`reportTab-${t}`);
     if (el) el.style.display = t === tab ? '' : 'none';
   });
@@ -1241,6 +1236,10 @@ window.switchReportTab = function(tab) {
   if (periodBtns) periodBtns.style.display = tab === 'balance' ? 'none' : '';
   // загружаем нужную вкладку
   loadCurrentReportTab();
+     // 🔥 если открыта вкладка Kaspi — перезагружаем данные
+    if (currentReportTab === 'kaspi' && typeof loadKaspiData === 'function') {
+        loadKaspiData();
+    }
 };
 
 function loadCurrentReportTab() {
@@ -1250,6 +1249,9 @@ function loadCurrentReportTab() {
     case 'returns': return loadReportReturns();
     case 'stock':   return loadReportStock();
     case 'balance': return loadReportBalance();
+    case 'kaspi':   
+      if (window.initKaspiReports) window.initKaspiReports();
+      return;
   }
 }
 
@@ -1590,16 +1592,32 @@ async function loadReportBalance() {
   if (container) container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-secondary);">Загрузка...</div>';
 
   try {
-    const { data, error } = await supabase
-      .from('product_balances')
-      .select('quantity, warehouse_id, store_location_id, products(id, name, sku, purchase_price, sale_price, active), warehouses(name)')
-      .gt('quantity', 0);
+  const { data, error } = await supabase
+  .from('product_balances')
+  .select(`
+    quantity,
+    warehouse_id,
+    store_location_id,
+    products!inner (
+      id,
+      name,
+      sku,
+      purchase_price,
+      sale_price,
+      company_id,
+      active
+    ),
+    warehouses(name)
+  `)
+  .eq('products.company_id', COMPANY_ID)
+  .gt('quantity', 0);
 
     if (error) throw error;
 
     // фильтруем только товары нашей компании через PRODUCTS_CACHE
-    const myProductIds = new Set(PRODUCTS_CACHE.map(p => p.id));
-    const rows = (data || []).filter(r => r.products && myProductIds.has(r.products.id));
+
+    const rows = data || [];
+
 
     const totalQty   = rows.reduce((s, r) => s + Number(r.quantity), 0);
     const totalValue = rows.reduce((s, r) => s + Number(r.quantity) * Number(r.products?.purchase_price || 0), 0);
