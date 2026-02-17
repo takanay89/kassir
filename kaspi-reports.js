@@ -38,42 +38,23 @@ async function loadKaspiData() {
 // ─── ПЕРИОД (берём из глобального состояния отчётов) ─────────────────────────
 
 function getCurrentPeriod() {
-    // Используем тот же период что выбран в отчётах (day/week/month)
-    // Кнопки в #reportsPeriodBtns управляют глобальной переменной currentPeriod
-    // Если она не определена — fallback на month
-    if (typeof currentPeriod !== 'undefined') return currentPeriod;
-    return 'month';
+    return window.currentPeriod || 'month';
 }
 
 function getDateRangeForPeriod(period) {
-    const now = new Date();
-    let startDate, endDate;
-    const format = (d) =>
-        d.toISOString().slice(0, 19); // убираем .000Z
-    endDate = format(now);
-    switch (period) {
-        case 'day': {
-            const d = new Date();
-            d.setHours(0, 0, 0, 0);
-            startDate = format(d);
-            break;
-        }
-        case 'week': {
-            const d = new Date(now);
-            d.setDate(d.getDate() - 7);
-            startDate = format(d);
-            break;
-        }
-        case 'month':
-        default: {
-            const d = new Date(now);
-            d.setDate(d.getDate() - 30);
-            startDate = format(d);
-            break;
-        }
+    // используем глобальную функцию из script.js
+    if (window.getPeriodDates) {
+        return window.getPeriodDates(period);
     }
+
+    const now = new Date();
+    const endDate = now.toISOString();
+    let startDate = endDate;
+
     return { startDate, endDate };
 }
+
+
 
 // ─── COMPANY ID ───────────────────────────────────────────────────────────────
 
@@ -221,6 +202,11 @@ function renderKaspiOrders(sales) {
         container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-secondary);">Нет заказов за выбранный период</div>';
         return;
     }
+let totalAmountSum = 0;
+let totalCommissionSum = 0;
+let totalDeliverySum = 0;
+let totalCostSum = 0;
+let totalProfitSum = 0;
 
     const rows = sales.map(order => {
 
@@ -230,6 +216,17 @@ function renderKaspiOrders(sales) {
         const cost = parseFloat(item.cost_price || 0);
         costTotal += cost * (item.quantity || 0);
     });
+const orderProfit =
+    (parseFloat(order.total_amount || 0)) -
+    (parseFloat(order.kaspi_commission_amount || 0)) -
+    (parseFloat(order.kaspi_delivery_cost || 0)) -
+    costTotal;
+
+totalAmountSum += parseFloat(order.total_amount || 0);
+totalCommissionSum += parseFloat(order.kaspi_commission_amount || 0);
+totalDeliverySum += parseFloat(order.kaspi_delivery_cost || 0);
+totalCostSum += costTotal;
+totalProfitSum += orderProfit;
 
     const products = (order.sale_items || [])
         .map(i => `${escapeHtml(i.products?.name || 'Неизвестно')} (${i.quantity}x)`)
@@ -256,8 +253,9 @@ function renderKaspiOrders(sales) {
                 ${formatCurrency(costTotal)}
             </td>
             <td style="padding:12px 8px;font-size:13px;color:#10b981;font-weight:600;text-align:right;">
-                ${formatCurrency(order.kaspi_net_amount || 0)}
-            </td>
+    ${formatCurrency(orderProfit)}
+
+</td>
             <td style="padding:12px 8px;font-size:13px;color:var(--text-secondary);">
                 ${order.kaspi_payment_mode || 'Kaspi'}
             </td>
@@ -281,6 +279,17 @@ function renderKaspiOrders(sales) {
             </thead>
             <tbody>
                 ${rows}
+
+                    <tr style="border-top:2px solid var(--border-color);background:var(--bg-secondary);font-weight:700;">
+        <td colspan="2" style="padding:14px 8px;">ИТОГО</td>
+        <td style="padding:14px 8px;text-align:right;">${formatCurrency(totalAmountSum)}</td>
+        <td style="padding:14px 8px;text-align:right;">${formatCurrency(totalCommissionSum)}</td>
+        <td style="padding:14px 8px;text-align:right;">${formatCurrency(totalDeliverySum)}</td>
+        <td style="padding:14px 8px;text-align:right;">${formatCurrency(totalCostSum)}</td>
+        <td style="padding:14px 8px;text-align:right;color:#10b981;">${formatCurrency(totalProfitSum)}</td>
+        <td></td>
+    </tr>
+
             </tbody>
         </table>
     `;
