@@ -1132,10 +1132,6 @@ window.showSection = function(name) {
     highlightSelectedStore();
     if (typeof window.onShowSettings === 'function') window.onShowSettings();
   }
-  // Синхронизация mobile меню
-if (window.updateMobileNavigation) {
-  window.updateMobileNavigation(name);
-}
 };
 
 // Права доступа по разделам
@@ -1265,11 +1261,82 @@ async function loadReportsStats() {
 }
 
 window.changePeriod = async function(period) {
-  currentPeriod = period;
-  document.querySelectorAll('#section-reports .period-btn').forEach(btn => btn.classList.remove('active'));
-  if (event && event.target) event.target.classList.add('active');
+  console.log('CHANGE PERIOD:', period);
+    currentPeriod = period;
+    window.currentPeriod = period;
+
+    const customBlock = document.getElementById('customPeriodBlock');
+
+    // убираем active у всех
+    document.querySelectorAll('#section-reports .period-btn')
+        .forEach(btn => btn.classList.remove('active'));
+
+    // ставим active текущей кнопке
+    if (event && event.target) {
+        event.target.classList.add('active');
+    }
+
+    // если есть блок — управляем им
+    if (customBlock) {
+        if (period === 'custom') {
+            customBlock.style.display = 'flex';
+            return; // отчёт грузим только по OK
+        } else {
+            customBlock.style.display = 'none';
+        }
+    }
+
+    loadCurrentReportTab();
+};
+
+window.applyCustomPeriod = function() {
+  currentPeriod = 'custom';
+  window.currentPeriod = 'custom';
   loadCurrentReportTab();
 };
+function getPeriodDates(period) {
+  const now = new Date();
+  let start = new Date();
+  let end = new Date();
+
+  if (period === 'day') {
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+  }
+
+  if (period === 'week') {
+    const day = now.getDay() || 7;
+    start = new Date(now);
+    start.setDate(now.getDate() - day + 1);
+    start.setHours(0, 0, 0, 0);
+
+    end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+  }
+
+  if (period === 'month') {
+    start = new Date(now.getFullYear(), now.getMonth(), 1);
+    end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    end.setHours(23, 59, 59, 999);
+  }
+
+  if (period === 'custom') {
+    const from = document.getElementById('customFrom')?.value;
+    const to = document.getElementById('customTo')?.value;
+
+    start = from ? new Date(from) : new Date();
+    end = to ? new Date(to) : new Date();
+
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+  }
+
+  return {
+    startDate: start.toISOString(),
+    endDate: end.toISOString()
+  };
+}
 
 // ---- ТАБ 1: Все операции cash_transactions ----
 async function loadReportCash() {
@@ -2575,31 +2642,59 @@ async function renderMoneyChart(startDate, endDate) {
   }
 }
 
-function getPeriodDates(period) {
+window.getPeriodDates = function(period) {
   const now = new Date();
-  const endDate = now.toISOString();
   let startDate;
-  
-  switch(period) {
-    case 'day':
+  let endDate = now.toISOString();
+
+  // 🔥 Новый режим custom
+  if (period === 'custom') {
+    const startInput = document.getElementById('customStartDate')?.value;
+    const endInput = document.getElementById('customEndDate')?.value;
+
+    if (!startInput || !endInput) {
+      return { startDate: now.toISOString(), endDate };
+    }
+
+    const start = new Date(startInput);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(endInput);
+    end.setHours(23, 59, 59, 999);
+
+    return {
+      startDate: start.toISOString(),
+      endDate: end.toISOString()
+    };
+  }
+
+  switch (period) {
+    case 'day': {
       const dayStart = new Date(now);
       dayStart.setHours(0, 0, 0, 0);
       startDate = dayStart.toISOString();
       break;
-    case 'week':
+    }
+
+    case 'week': {
       const weekStart = new Date(now);
       weekStart.setDate(weekStart.getDate() - 7);
       startDate = weekStart.toISOString();
       break;
+    }
+
     case 'month':
+    default: {
       const monthStart = new Date(now);
       monthStart.setDate(monthStart.getDate() - 30);
       startDate = monthStart.toISOString();
       break;
+    }
   }
-  
+
   return { startDate, endDate };
 }
+
 
 // =============================================
 // ПОСТАВЩИКИ
@@ -4113,6 +4208,7 @@ function renderWarehouseProductsList() {
     </table>
   `;
 }
+window.getPeriodDates = getPeriodDates;
 
 window.filterWarehouseProducts = function() {
   renderWarehouseProductsList();
