@@ -1655,28 +1655,6 @@
 // BARCODE SCANNER
 let quaggaInstance = null;
 
-// Mobile Navigation Sync
-document.addEventListener('DOMContentLoaded', function() {
-  // Синхронизация мобильного меню с desktop меню
-  const observer = new MutationObserver(function(mutations) {
-    mutations.forEach(function(mutation) {
-      if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-        const target = mutation.target;
-        if (target.classList.contains('nav-item') && target.classList.contains('active')) {
-          const section = target.dataset.section;
-          updateMobileNavigation(section);
-        }
-      }
-    });
-  });
-  
-  // Наблюдаем за всеми кнопками навигации
-  // На мобильных .nav-item не существует (sidebar удалён), forEach просто не выполнится
-  document.querySelectorAll('.nav-item').forEach(item => {
-    observer.observe(item, { attributes: true });
-  });
-});
-
 function updateMobileNavigation(section) {
   // Обновляем мобильное меню
   const mobileItems = document.querySelectorAll('.mobile-nav-item');
