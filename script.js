@@ -1132,6 +1132,10 @@ window.showSection = function(name) {
     highlightSelectedStore();
     if (typeof window.onShowSettings === 'function') window.onShowSettings();
   }
+  // Синхронизация mobile меню
+if (window.updateMobileNavigation) {
+  window.updateMobileNavigation(name);
+}
 };
 
 // Права доступа по разделам
