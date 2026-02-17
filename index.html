@@ -541,12 +541,24 @@
         <h1 class="section-title">Отчёты</h1>
       </div>
 
-      <!-- Фильтр периода -->
-      <div class="period-buttons" id="reportsPeriodBtns">
+<!-- Фильтр периода -->
+<div class="period-row">
+
+    <div class="period-buttons" id="reportsPeriodBtns">
         <button class="period-btn active" onclick="changePeriod('day')">День</button>
         <button class="period-btn" onclick="changePeriod('week')">Неделя</button>
         <button class="period-btn" onclick="changePeriod('month')">Месяц</button>
-      </div>
+        <button class="period-btn" onclick="changePeriod('custom')">Период</button>
+    </div>
+
+    <div id="customPeriodBlock" class="custom-period-inline" style="display:none;">
+        <input type="date" id="customFrom" class="date-input">
+        <span class="date-separator">—</span>
+        <input type="date" id="customTo" class="date-input">
+        <button class="period-btn" onclick="applyCustomPeriod()">OK</button>
+    </div>
+
+</div>
 
       <!-- Вкладки отчётов -->
       <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--border-color);overflow-x:auto;">
