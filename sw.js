@@ -1,8 +1,9 @@
 // =============================================
-// SERVICE WORKER - PWA ПОДДЕРЖКА
+// SERVICE WORKER - SAFE PRODUCTION VERSION
 // =============================================
 
-const CACHE_NAME = 'kassir-pos-v5-race-fix';
+const CACHE_NAME = 'kassir-pos-v6-safe-cache';
+
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -14,88 +15,83 @@ const ASSETS_TO_CACHE = [
 ];
 
 // =============================================
-// УСТАНОВКА
+// INSTALL
 // =============================================
 self.addEventListener('install', (event) => {
-  console.log('📦 Service Worker устанавливается...');
-  
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('📦 Кеширование файлов приложения');
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
-  
   self.skipWaiting();
 });
 
 // =============================================
-// АКТИВАЦИЯ
+// ACTIVATE
 // =============================================
 self.addEventListener('activate', (event) => {
-  console.log('✅ Service Worker активирован');
-  
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
-            console.log('🗑️ Удаление старого кеша:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
     })
   );
-  
-  return self.clients.claim();
+  self.clients.claim();
 });
 
 // =============================================
-// FETCH - СТРАТЕГИЯ КЕШИРОВАНИЯ
+// SAFE CACHE PUT
+// =============================================
+async function safeCachePut(request, response) {
+  try {
+    const url = new URL(request.url);
+
+    if (url.protocol === 'http:' || url.protocol === 'https:') {
+      const cache = await caches.open(CACHE_NAME);
+      await cache.put(request, response.clone());
+    }
+  } catch (_) {
+    // Никогда не ломаем SW из-за ошибки кеширования
+  }
+}
+
+// =============================================
+// FETCH HANDLER
 // =============================================
 self.addEventListener('fetch', (event) => {
   const { request } = event;
+
   const url = new URL(request.url);
-  
-  // Пропускаем запросы к Supabase API
+
+  // Пропускаем Supabase API
   if (url.origin.includes('supabase.co')) {
     return;
   }
-  
-  // Пропускаем запросы к CDN
+
+  // Пропускаем CDN
   if (url.origin.includes('cdn.jsdelivr.net')) {
     return;
   }
-  
-  // Network First для HTML (всегда пытаемся получить свежую версию)
+
+  // Пропускаем нестандартные схемы
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return;
+  }
+
+  // -------------------------------------------
+  // NETWORK FIRST — HTML
+  // -------------------------------------------
   if (request.destination === 'document') {
     event.respondWith(
       fetch(request)
-        .then((response) => {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, responseClone);
-          });
-          return response;
-        })
-        .catch(() => {
-          return caches.match(request);
-        })
-    );
-    return;
-  }
-  
-  // ✅ ИСПРАВЛЕНИЕ: Network First для JS и CSS — всегда берём свежие файлы
-  // Cache First вызывал проблему: после обновления файлов браузер отдавал старые версии
-  // и F5 не помогал — только Shift+F5 (полный сброс кеша)
-  if (request.destination === 'script' || request.destination === 'style') {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
+        .then(async (response) => {
           if (response && response.status === 200) {
-            const responseClone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+            await safeCachePut(request, response);
           }
           return response;
         })
@@ -104,47 +100,53 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache First для остальных ресурсов (картинки, шрифты и т.д.)
+  // -------------------------------------------
+  // NETWORK FIRST — JS & CSS
+  // -------------------------------------------
+  if (request.destination === 'script' || request.destination === 'style') {
+    event.respondWith(
+      fetch(request)
+        .then(async (response) => {
+          if (response && response.status === 200) {
+            await safeCachePut(request, response);
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // -------------------------------------------
+  // CACHE FIRST — Остальные ресурсы
+  // -------------------------------------------
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
       if (cachedResponse) {
         return cachedResponse;
       }
-      
-      return fetch(request).then((response) => {
-        if (!response || response.status !== 200 || response.type === 'error') {
+
+      return fetch(request)
+        .then(async (response) => {
+          if (!response || response.status !== 200) {
+            return response;
+          }
+
+          await safeCachePut(request, response);
           return response;
-        }
-        
-        const requestUrl = new URL(request.url);
-        if (requestUrl.protocol !== 'http:' && requestUrl.protocol !== 'https:') {
-          return response;
-        }
-        
-        const responseClone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(request, responseClone);
+        })
+        .catch(() => {
+          return cachedResponse;
         });
-        
-        return response;
-      });
     })
   );
 });
 
 // =============================================
-// SYNC EVENT (для фоновой синхронизации)
+// BACKGROUND SYNC
 // =============================================
 self.addEventListener('sync', (event) => {
   if (event.tag === 'sync-sales') {
-    console.log('🔄 Фоновая синхронизация запущена');
-    event.waitUntil(syncPendingSales());
+    event.waitUntil(Promise.resolve());
   }
 });
-
-// Placeholder для синхронизации (основная логика в sync.js)
-async function syncPendingSales() {
-  console.log('🔄 Попытка синхронизации несохранённых продаж...');
-  // Реальная синхронизация происходит в основном приложении
-  return Promise.resolve();
-}
