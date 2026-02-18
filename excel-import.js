@@ -1,24 +1,15 @@
 // =============================================
 // EXCEL IMPORT — массовая загрузка товаров
 // =============================================
-// Логика:
-//  • Штрихкод обязателен
-//  • Дубликат по штрихкоду:
-//      - цены совпадают → прибавить количество
-//      - цены разные    → оприходовать по новым ценам (обновить товар)
-//  • Количество 0 → только прайс (product_balances не трогаем)
-//  • Количество > 0 → создаём/обновляем product_balances
 
 import { supabase } from './supabaseClient.js';
 
-// Данные текущего импорта (заполняются при парсинге, используются при подтверждении)
-let _importRows   = [];   // { barcode, name, sku, type, sale_price, purchase_price, quantity, unit, comment }
-let _importErrors = [];   // строки с ошибками валидации
+let _importRows   = [];
+let _importErrors = [];
+let _existingProductsMap = new Map();
 
 // ─── СКАЧАТЬ ШАБЛОН ────────────────────────────────────────────────────────
 window.downloadExcelTemplate = function() {
-  // Генерируем CSV как запасной вариант (не требует библиотек)
-  // Шаблон Excel лежит в публичной папке проекта
   const link = document.createElement('a');
   link.href = '/products_template.xlsx';
   link.download = 'шаблон_товары.xlsx';
@@ -30,14 +21,12 @@ window.handleExcelUpload = async function(event) {
   const file = event.target.files[0];
   if (!file) return;
 
-  // Сбрасываем input чтобы можно было загрузить тот же файл повторно
   event.target.value = '';
-
   window.showToast('📊 Читаем файл...');
 
   try {
     const rows = await parseExcelFile(file);
-    showImportPreview(rows);
+    await showImportPreview(rows);
   } catch (err) {
     window.showToast('❌ Ошибка чтения файла: ' + err.message, 'error');
   }
@@ -45,7 +34,6 @@ window.handleExcelUpload = async function(event) {
 
 // ─── ПАРСИНГ XLSX ЧЕРЕЗ SheetJS (CDN) ──────────────────────────────────────
 async function parseExcelFile(file) {
-  // Загружаем SheetJS если ещё не загружен
   if (!window.XLSX) {
     await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
   }
@@ -55,7 +43,6 @@ async function parseExcelFile(file) {
   const ws     = wb.Sheets[wb.SheetNames[0]];
   const raw    = window.XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
-  // Ищем строку заголовков (содержит "Штрихкод" или "barcode")
   let headerRow = -1;
   for (let i = 0; i < Math.min(raw.length, 10); i++) {
     const row = raw[i].map(c => String(c).toLowerCase().trim());
@@ -69,16 +56,14 @@ async function parseExcelFile(file) {
     throw new Error('Не найдена строка заголовков. Убедитесь что используете наш шаблон.');
   }
 
-  // ИСПРАВЛЕНИЕ: нормализуем заголовки - убираем пробелы, приводим к нижнему регистру, убираем звёздочки
   const headers = raw[headerRow].map(c => 
     String(c)
       .toLowerCase()
       .trim()
-      .replace(/\*/g, '')  // убираем звёздочки
-      .replace(/\s+/g, ' ') // множественные пробелы в один
+      .replace(/\*/g, '')
+      .replace(/\s+/g, ' ')
   );
 
-  // Маппинг заголовков → индексы колонок
   const col = {
     barcode:        findCol(headers, ['штрихкод', 'barcode', 'штрих']),
     name:           findCol(headers, ['название', 'name', 'наименование']),
@@ -91,30 +76,25 @@ async function parseExcelFile(file) {
     comment:        findCol(headers, ['комментарий', 'comment', 'примечание']),
   };
 
-  // Диагностика — выводим что нашли в консоль
-  console.log('📊 Excel columns found:', col);
-  console.log('📊 Headers:', headers);
-  console.log('📊 Raw headers:', raw[headerRow]);
-
   const rows = [];
   const errors = [];
 
   for (let i = headerRow + 1; i < raw.length; i++) {
     const r = raw[i];
 
-    // Пропускаем пустые строки (нет штрихкода И названия)
     const rawBarcode = String(r[col.barcode] ?? '').trim();
     const rawName    = String(r[col.name]    ?? '').trim();
     if (!rawBarcode && !rawName) continue;
 
-    // Пропускаем строки-описания (4-я строка шаблона)
     if (rawName.includes('Название товара') || rawBarcode.includes('Штрихкод')) continue;
 
     const rowNum = i + 1;
     const rowErrors = [];
 
-    if (!rawBarcode) rowErrors.push('нет штрихкода');
-    if (!rawName)    rowErrors.push('нет названия');
+    if (!rawBarcode) {
+      rowErrors.push('нет штрихкода');
+    }
+    if (!rawName) rowErrors.push('нет названия');
 
     const rawType  = String(r[col.type] ?? 'product').trim().toLowerCase();
     const typeVal  = rawType === 'service' || rawType === 'услуга' ? 'service' : 'product';
@@ -122,7 +102,6 @@ async function parseExcelFile(file) {
     const salePrice     = parseFloat(String(r[col.sale_price]     ?? '0').replace(',', '.')) || 0;
     const purchasePrice = parseFloat(String(r[col.purchase_price] ?? '0').replace(',', '.')) || 0;
     
-    // ИСПРАВЛЕНИЕ: более надёжное извлечение количества
     let quantity = 0;
     if (col.quantity >= 0) {
       const rawQty = r[col.quantity];
@@ -131,9 +110,6 @@ async function parseExcelFile(file) {
         quantity = parseInt(qtyStr) || parseFloat(qtyStr) || 0;
       }
     }
-    
-    // Логируем для отладки
-    console.log(`Row ${rowNum}: barcode=${rawBarcode}, quantity_raw=${r[col.quantity]}, quantity_parsed=${quantity}`);
 
     if (salePrice < 0)     rowErrors.push('цена не может быть отрицательной');
     if (purchasePrice < 0) rowErrors.push('себестоимость не может быть отрицательной');
@@ -163,12 +139,10 @@ async function parseExcelFile(file) {
 }
 
 function findCol(headers, variants) {
-  // Сначала ищем точное совпадение
   for (const v of variants) {
     const idx = headers.findIndex(h => h === v);
     if (idx !== -1) return idx;
   }
-  // Потом includes
   for (const v of variants) {
     const idx = headers.findIndex(h => h.includes(v));
     if (idx !== -1) return idx;
@@ -190,21 +164,37 @@ function loadScript(src) {
 async function showImportPreview(rows) {
   _importRows = rows;
 
-  // Сравниваем с существующими товарами по штрихкоду
-  const existingMap = {};
-  (window.PRODUCTS_CACHE || []).forEach(p => {
-    if (p.barcode) existingMap[String(p.barcode).trim()] = p;
-  });
+  const barcodes = rows
+    .map(r => String(r.barcode).trim())
+    .filter(Boolean);
 
-  // Размечаем статус каждой строки
+  _existingProductsMap = new Map();
+
+  if (barcodes.length > 0) {
+    const { data: existingProducts, error } = await supabase
+      .from('products')
+      .select('id, barcode, sale_price, purchase_price, name, type, sku, unit')
+      .eq('company_id', window.COMPANY_ID)
+      .in('barcode', barcodes);
+
+    if (!error && existingProducts) {
+      existingProducts.forEach(p => {
+        _existingProductsMap.set(String(p.barcode).trim(), p);
+      });
+    }
+  }
+
   const annotated = rows.map(row => {
-    const existing = existingMap[row.barcode];
+    const normalizedBarcode = String(row.barcode).trim();
+    const existing = _existingProductsMap.get(normalizedBarcode);
+    
     if (!existing) {
       return { ...row, status: 'new', existing: null };
     }
+
     const pricesMatch =
-      Math.abs(Number(existing.base_price || existing.sale_price || 0) - row.sale_price) < 0.01 &&
-      Math.abs(Number(existing.cost_price || existing.purchase_price || 0) - row.purchase_price) < 0.01;
+      Math.abs(Number(existing.sale_price || 0) - row.sale_price) < 0.01 &&
+      Math.abs(Number(existing.purchase_price || 0) - row.purchase_price) < 0.01;
 
     return {
       ...row,
@@ -218,70 +208,67 @@ async function showImportPreview(rows) {
   const updateCount   = annotated.filter(r => r.status === 'update_price').length;
   const errorCount    = _importErrors.length;
 
-  // Статистика
   const statsEl = document.getElementById('excelImportStats');
   statsEl.innerHTML = `
     <div style="padding:8px 14px;background:#dcfce7;border-radius:8px;font-size:13px;font-weight:600;color:#166534;">
       ✅ Новых: ${newCount}
     </div>
     <div style="padding:8px 14px;background:#dbeafe;border-radius:8px;font-size:13px;font-weight:600;color:#1e40af;">
-      ➕ Пополнение остатка: ${addQtyCount}
+      ➕ Добавить кол-во: ${addQtyCount}
     </div>
-    <div style="padding:8px 14px;background:#fef9c3;border-radius:8px;font-size:13px;font-weight:600;color:#854d0e;">
-      🔄 Новый завоз (новые цены): ${updateCount}
+    <div style="padding:8px 14px;background:#fef3c7;border-radius:8px;font-size:13px;font-weight:600;color:#92400e;">
+      🔄 Обновить: ${updateCount}
     </div>
-    ${errorCount > 0 ? `<div style="padding:8px 14px;background:#fee2e2;border-radius:8px;font-size:13px;font-weight:600;color:#991b1b;">⚠️ Ошибок: ${errorCount}</div>` : ''}
+    ${errorCount > 0 ? `<div style="padding:8px 14px;background:#fee2e2;border-radius:8px;font-size:13px;font-weight:600;color:#991b1b;">❌ Ошибок: ${errorCount}</div>` : ''}
   `;
 
-  // Таблица превью
-  const previewEl = document.getElementById('excelImportPreview');
-
-  const statusLabel = {
-    new:          '<span style="color:#166534;font-weight:600;font-size:12px;">✅ Новый</span>',
-    add_qty:      '<span style="color:#1e40af;font-weight:600;font-size:12px;">➕ +Кол-во</span>',
-    update_price: '<span style="color:#854d0e;font-weight:600;font-size:12px;">🔄 Новые цены</span>',
+  const statusLabels = {
+    new:          { text: '🆕 Новый',     color: '#10b981' },
+    add_qty:      { text: '➕ Добавить',  color: '#3b82f6' },
+    update_price: { text: '🔄 Обновить',  color: '#f59e0b' },
   };
 
-  const rowsHtml = annotated.map((row, i) => `
-    <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:8px 6px;color:var(--text-secondary);">${i + 1}</td>
-      <td style="padding:8px 6px;font-family:monospace;font-size:12px;">${row.barcode}</td>
-      <td style="padding:8px 6px;">${row.name}</td>
-      <td style="padding:8px 6px;color:var(--text-secondary);font-size:12px;">${row.sku || '—'}</td>
-      <td style="padding:8px 6px;text-align:center;font-size:11px;">${row.type === 'service' ? '🛠️' : '📦'}</td>
-      <td style="padding:8px 6px;text-align:right;font-weight:600;">${row.sale_price.toLocaleString('ru-RU')} ₸</td>
-      <td style="padding:8px 6px;text-align:right;color:var(--text-secondary);">${row.purchase_price.toLocaleString('ru-RU')} ₸</td>
-      <td style="padding:8px 6px;text-align:center;font-weight:600;color:${row.quantity > 0 ? '#059669' : '#6b7280'};">${row.quantity}</td>
-      <td style="padding:8px 6px;text-align:center;">${statusLabel[row.status] || '—'}</td>
-    </tr>
-  `).join('');
+  const rowsHtml = annotated.map(row => {
+    const badge = statusLabels[row.status];
+    return `
+      <tr style="border-bottom:1px solid #e5e7eb;">
+        <td style="padding:8px 6px;font-size:11px;color:#6b7280;">${row._row}</td>
+        <td style="padding:8px 6px;font-size:12px;font-family:monospace;">${row.barcode}</td>
+        <td style="padding:8px 6px;font-size:12px;font-weight:500;">${row.name}</td>
+        <td style="padding:8px 6px;text-align:center;font-size:11px;">${row.type === 'service' ? '🔧 Услуга' : '📦 Товар'}</td>
+        <td style="padding:8px 6px;text-align:right;font-size:12px;font-weight:600;">${row.sale_price.toLocaleString()} ₸</td>
+        <td style="padding:8px 6px;text-align:right;font-size:12px;">${row.purchase_price.toLocaleString()} ₸</td>
+        <td style="padding:8px 6px;text-align:center;font-size:12px;">${row.quantity}</td>
+        <td style="padding:8px 6px;text-align:center;">
+          <span style="display:inline-block;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:600;background:${badge.color}22;color:${badge.color};">
+            ${badge.text}
+          </span>
+        </td>
+      </tr>
+    `;
+  }).join('');
 
-  const errorsHtml = _importErrors.length > 0 ? `
-    <div style="margin-top:16px;padding:12px;background:#fef2f2;border-radius:8px;border-left:4px solid #dc2626;">
-      <div style="font-weight:600;color:#991b1b;margin-bottom:8px;">⚠️ Ошибки валидации:</div>
-      <table style="width:100%;font-size:12px;">
+  let errorsHtml = '';
+  if (_importErrors.length > 0) {
+    errorsHtml = `
+      <div style="margin-top:16px;padding:12px;background:#fee2e2;border-radius:8px;border:1px solid #fecaca;">
+        <div style="font-weight:600;color:#991b1b;margin-bottom:8px;">❌ Строки с ошибками:</div>
         ${_importErrors.map(e => `
-          <tr>
-            <td style="padding:4px;color:#7f1d1d;">Строка ${e.row}</td>
-            <td style="padding:4px;">${e.barcode}</td>
-            <td style="padding:4px;">${e.name}</td>
-            <td style="padding:4px;color:#dc2626;">${e.errors.join(', ')}</td>
-          </tr>
+          <div style="font-size:12px;color:#7f1d1d;margin-bottom:4px;">
+            Строка ${e.row}: <strong>${e.name}</strong> (${e.barcode}) — ${e.errors.join(', ')}
+          </div>
         `).join('')}
-      </table>
-    </div>
-  ` : '';
+      </div>
+    `;
+  }
 
-  previewEl.innerHTML = annotated.length === 0
-    ? '<div style="text-align:center;padding:30px;color:var(--text-secondary);">Нет данных для загрузки</div>'
-    : `
+  document.getElementById('excelImportPreview').innerHTML = `
       <table style="width:100%;border-collapse:collapse;font-size:13px;">
         <thead>
-          <tr style="background:var(--bg-secondary);font-size:11px;color:var(--text-secondary);font-weight:600;text-transform:uppercase;letter-spacing:.04em;">
-            <th style="padding:8px 6px;text-align:left;">#</th>
+          <tr style="background:#f9fafb;border-bottom:2px solid #e5e7eb;">
+            <th style="padding:8px 6px;text-align:left;font-size:11px;color:#6b7280;">#</th>
             <th style="padding:8px 6px;text-align:left;">Штрихкод</th>
             <th style="padding:8px 6px;text-align:left;">Название</th>
-            <th style="padding:8px 6px;text-align:left;">Артикул</th>
             <th style="padding:8px 6px;text-align:center;">Тип</th>
             <th style="padding:8px 6px;text-align:right;">Цена</th>
             <th style="padding:8px 6px;text-align:right;">Себест.</th>
@@ -294,7 +281,6 @@ async function showImportPreview(rows) {
       ${errorsHtml}
     `;
 
-  // Обновляем заголовок и кнопку
   document.getElementById('excelImportTitle').textContent =
     `📥 Загрузка товаров из Excel — ${annotated.length} строк`;
 
@@ -307,9 +293,7 @@ async function showImportPreview(rows) {
     btn.style.opacity = '1';
   }
 
-  // Сохраняем аннотированные данные для confirmExcelImport
   _importRows = annotated;
-
   openModal('excelImportModal');
 }
 
@@ -325,62 +309,53 @@ window.confirmExcelImport = async function() {
   let errorCount   = 0;
   const errors     = [];
 
-  try {
-    for (const row of _importRows) {
-      try {
-        await processImportRow(row);
-        successCount++;
-      } catch (err) {
-        errorCount++;
-        errors.push(`${row.name} (${row.barcode}): ${err.message}`);
-        console.error('Import row error:', row, err);
-      }
+  for (const row of _importRows) {
+    try {
+      await processImportRow(row);
+      successCount++;
+    } catch (err) {
+      errorCount++;
+      errors.push(`${row.name} (${row.barcode}): ${err.message}`);
     }
-
-    closeModal('excelImportModal');
-
-    // Сначала обновляем кеш и таблицу, потом показываем уведомление
-    // (иначе loadInitialData удаляет модалку до того как она успевает показаться)
-    if (window.loadInitialData)   await window.loadInitialData();
-    if (window.loadProductsTable) await window.loadProductsTable();
-    if (window.renderIncomeProductsList) window.renderIncomeProductsList();
-
-    if (errorCount === 0) {
-      window.showToast(`✅ Загружено ${successCount} товаров`);
-      if (window.showQuickStockSuccess) {
-        window.showQuickStockSuccess(`Загружено ${successCount} товаров`, successCount, '#3b82f6', '📦');
-      }
-    } else {
-      window.showToast(`⚠️ Загружено ${successCount}, ошибок ${errorCount}`, 'error');
-      console.warn('Import errors:', errors);
-    }
-
-  } finally {
-    btn.disabled    = false;
-    btn.textContent = 'Загрузить товары';
   }
+
+  closeModal('excelImportModal');
+
+  if (window.loadInitialData)   await window.loadInitialData();
+  if (window.loadProductsTable) await window.loadProductsTable();
+  if (window.renderIncomeProductsList) window.renderIncomeProductsList();
+
+  if (errorCount === 0) {
+    window.showToast(`✅ Загружено ${successCount} товаров`);
+    if (window.showQuickStockSuccess) {
+      window.showQuickStockSuccess(`Загружено ${successCount} товаров`, successCount, '#3b82f6', '📦');
+    }
+  } else {
+    window.showToast(`⚠️ Загружено ${successCount}, ошибок ${errorCount}`, 'error');
+  }
+
+  btn.disabled    = false;
+  btn.textContent = 'Загрузить товары';
 };
 
 // ─── ОБРАБОТКА ОДНОЙ СТРОКИ ─────────────────────────────────────────────────
-// Используем тот же RPC что и обычный приход — create_purchase_document
-// Прямой insert в product_balances не работает из-за RLS политик Supabase
 async function processImportRow(row) {
   const companyId = window.COMPANY_ID;
-
-  // Получаем склад через тот же механизм что и trading-operations.js
   const warehouseId = await getWarehouseIdForImport();
+  const normalizedBarcode = String(row.barcode).trim();
 
-  if (row.status === 'new') {
-    // ── ШАГ 1: Создаём товар ────────────────────────────────────────────────
+  const existing = _existingProductsMap.get(normalizedBarcode);
+
+  if (!existing) {
     const sku = row.sku || await generateSku(row.name);
 
     const { data: product, error: pErr } = await supabase
       .from('products')
-      .upsert({
+      .insert({
         company_id:     companyId,
         name:           row.name,
         sku,
-        barcode:        row.barcode,
+        barcode:        normalizedBarcode,
         type:           row.type,
         sale_price:     row.sale_price,
         purchase_price: row.purchase_price,
@@ -388,35 +363,47 @@ async function processImportRow(row) {
         comment:        row.comment || null,
         active:         true,
         updated_at:     new Date().toISOString(),
-      }, {
-        onConflict: 'company_id,sku'
       })
       .select('id')
       .single();
 
     if (pErr) throw pErr;
 
-    // ── ШАГ 2: Если есть количество — оприходуем через RPC ──────────────────
+    _existingProductsMap.set(normalizedBarcode, {
+      id: product.id,
+      barcode: normalizedBarcode,
+      sale_price: row.sale_price,
+      purchase_price: row.purchase_price,
+      name: row.name,
+      type: row.type,
+      sku,
+      unit: row.unit || 'шт',
+    });
+
     if (row.quantity > 0 && row.type !== 'service') {
       await purchaseViaRpc(warehouseId, [{
         product_id: product.id,
         quantity:   row.quantity,
         cost_price: row.purchase_price || 0,
       }], 'Начальный остаток (импорт Excel)');
+    } else if (row.type !== 'service') {
+      const { error: balanceErr } = await supabase
+        .from('product_balances')
+        .upsert({
+          product_id: product.id,
+          warehouse_id: warehouseId,
+          store_location_id: null,
+          quantity: 0
+        }, {
+          onConflict: 'product_id,warehouse_id,store_location_id'
+        });
+      
+      if (balanceErr) {
+        console.warn('Failed to create zero balance for new product:', balanceErr);
+      }
     }
 
-  } else if (row.status === 'add_qty') {
-    // ── ЦЕНЫ СОВПАДАЮТ — пополняем через RPC ────────────────────────────────
-    if (row.quantity <= 0 || row.type === 'service') return;
-
-    await purchaseViaRpc(warehouseId, [{
-      product_id: row.existing.id,
-      quantity:   row.quantity,
-      cost_price: row.purchase_price || 0,
-    }], 'Пополнение (импорт Excel)');
-
-  } else if (row.status === 'update_price') {
-    // ── ЦЕНЫ РАЗНЫЕ — обновляем цены товара, потом оприходуем ───────────────
+  } else {
     const { error: upErr } = await supabase
       .from('products')
       .update({
@@ -424,27 +411,48 @@ async function processImportRow(row) {
         purchase_price: row.purchase_price,
         name:           row.name,
       })
-      .eq('id', row.existing.id);
+      .eq('id', existing.id);
 
     if (upErr) throw upErr;
 
+    _existingProductsMap.set(normalizedBarcode, {
+      ...existing,
+      sale_price: row.sale_price,
+      purchase_price: row.purchase_price,
+      name: row.name,
+    });
+
     if (row.quantity > 0 && row.type !== 'service') {
       await purchaseViaRpc(warehouseId, [{
-        product_id: row.existing.id,
+        product_id: existing.id,
         quantity:   row.quantity,
         cost_price: row.purchase_price || 0,
-      }], 'Новый завоз по новым ценам (импорт Excel)');
+      }], row.status === 'add_qty' ? 'Пополнение (импорт Excel)' : 'Новый завоз по новым ценам (импорт Excel)');
+    } else if (row.type !== 'service') {
+      const { error: balanceErr } = await supabase
+        .from('product_balances')
+        .upsert({
+          product_id: existing.id,
+          warehouse_id: warehouseId,
+          store_location_id: null,
+          quantity: 0
+        }, {
+          onConflict: 'product_id,warehouse_id,store_location_id'
+        });
+      
+      if (balanceErr) {
+        console.warn('Failed to create zero balance for existing product:', balanceErr);
+      }
     }
   }
 }
 
 // ─── RPC ПРИХОД — тот же путь что и обычный приход товаров ──────────────────
 async function purchaseViaRpc(warehouseId, items, comment) {
-  // ✅ НОРМАЛИЗАЦИЯ: явное приведение к типу purchase_item_input[]
   const normalizedItems = items.map(item => ({
-    product_id: String(item.product_id),           // UUID как строка
-    quantity:   Number(item.quantity) || 0,        // число
-    cost_price: Number(item.cost_price) || 0       // число
+    product_id: String(item.product_id),
+    quantity:   Number(item.quantity) || 0,
+    cost_price: Number(item.cost_price) || 0
   }));
 
   const { data, error } = await supabase.rpc('create_purchase_document', {
@@ -452,13 +460,12 @@ async function purchaseViaRpc(warehouseId, items, comment) {
     p_warehouse_id:   warehouseId,
     p_payment_method: null,
     p_supplier_id:    null,
-    p_items:          normalizedItems,  // ← передаём нормализованные данные
+    p_items:          normalizedItems,
     p_comment:        comment,
   });
 
   if (error) throw error;
 
-  // После прихода на склад — перемещаем в торговую точку (как делает autoTransferToStore)
   if (window.STORE_LOCATION_ID && warehouseId) {
     for (const item of items) {
       try {
@@ -470,8 +477,6 @@ async function purchaseViaRpc(warehouseId, items, comment) {
           p_to_store_location_id: window.STORE_LOCATION_ID,
         });
       } catch (transferError) {
-        // Тихо игнорируем ошибки переноса — у некоторых компаний нет этой RPC
-        console.warn('Transfer stock failed (ignored):', transferError);
       }
     }
   }
@@ -481,7 +486,6 @@ async function purchaseViaRpc(warehouseId, items, comment) {
 
 // ─── ВСПОМОГАТЕЛЬНЫЕ ─────────────────────────────────────────────────────────
 async function getWarehouseIdForImport() {
-  // Используем тот же кеш что и trading-operations.js
   if (window.WAREHOUSE_CACHE) return window.WAREHOUSE_CACHE;
   if (window.WAREHOUSE_ID)    return window.WAREHOUSE_ID;
 
@@ -500,7 +504,6 @@ async function getWarehouseIdForImport() {
 }
 
 async function generateSku(name) {
-  // Простой артикул из первых букв + случайные цифры
   const prefix = (name || 'SKU')
     .replace(/[^a-zA-ZА-ЯёЁа-я0-9]/g, '')
     .substring(0, 4)
