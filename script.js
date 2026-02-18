@@ -1116,6 +1116,9 @@ window.showSection = function(name) {
   const nav = document.querySelector(`.nav-item[data-section="${name}"]`);
   if (nav) nav.classList.add('active');
 
+    // Обновляем мобильную навигацию
+  if (typeof updateMobileNavigation === 'function') updateMobileNavigation(name);
+
   // При возврате в кассу — всегда сбрасываем на вкладку "Продажа"
   // иначе currentTab остаётся 'income'/'writeoff' после посещения раздела товаров
   if (name === 'trading') {
