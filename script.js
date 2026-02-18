@@ -2479,8 +2479,7 @@ async function loadMoneyStats() {
     // 1. Продажи — выручка + себестоимость
     const { data: sales, error: salesErr } = await supabase
       .from('sales')
-      .select('total_amount, sale_items(quantity, price, cost_price)')
-      .eq('company_id', COMPANY_ID)
+      .select('total_amount, external_id, sale_items(quantity, price, cost_price)')      .eq('company_id', COMPANY_ID)
       .eq('status', 'completed')
       .gt('total_amount', 0)
       .is('deleted_at', null)
@@ -2489,8 +2488,18 @@ async function loadMoneyStats() {
     if (salesErr) throw salesErr;
 
     let revenue = 0, cost = 0;
+    let revenueShop = 0, revenueKaspi = 0;
+    let shopCount = 0, kaspiCount = 0;
     (sales || []).forEach(s => {
-      revenue += Number(s.total_amount);
+      const amt = Number(s.total_amount);
+      revenue += amt;
+      if (s.external_id) {
+        revenueKaspi += amt;
+        kaspiCount++;
+      } else {
+        revenueShop += amt;
+        shopCount++;
+      }
       (s.sale_items || []).forEach(i => {
         cost += Number(i.cost_price || 0) * Number(i.quantity || 0);
       });
@@ -2541,6 +2550,20 @@ async function loadMoneyStats() {
     const mNet = document.getElementById('mNet');
     document.getElementById('mRevenue').textContent      = formatMoney(revenue);
     document.getElementById('mRevenueCount').textContent = `${(sales||[]).length} продаж`;
+    
+    // Разбивка магазин / Kaspi
+    const revenueBreakdown = document.getElementById('revenueBreakdown');
+    if (revenueBreakdown) {
+      if (kaspiCount > 0) {
+        revenueBreakdown.style.display = 'flex';
+        document.getElementById('mRevenueShop').textContent = formatMoney(revenueShop);
+        document.getElementById('mRevenueShopCount').textContent = `${shopCount} продаж`;
+        document.getElementById('mRevenueKaspi').textContent = formatMoney(revenueKaspi);
+        document.getElementById('mRevenueKaspiCount').textContent = `${kaspiCount} заказов`;
+      } else {
+        revenueBreakdown.style.display = 'none';
+      }
+    }
     document.getElementById('mExpenses').textContent     = formatMoney(totalExpenses);
     document.getElementById('mExpensesCount').textContent = `${(expRows||[]).length} операций`;
     document.getElementById('mCost').textContent         = formatMoney(cost);
