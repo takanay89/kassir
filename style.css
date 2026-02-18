@@ -3234,3 +3234,296 @@ body {
     border-color: var(--primary-color);
     box-shadow: 0 0 0 2px rgba(59,130,246,0.25);
 }
+/* ═══════════════════════════════════════════════════════════════════
+   MOBILE UX FIXES (добавить в конец style.css)
+   ═══════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+
+  /* === 1. REPORT TABS — горизонтальный скролл === */
+  /* Контейнер вкладок отчётов (inline style в HTML, поэтому !important) */
+  [style*="border-bottom:2px solid var(--border-color)"] {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    flex-wrap: nowrap !important;
+  }
+  [style*="border-bottom:2px solid var(--border-color)"]::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .report-tab-btn {
+    padding: 10px 14px !important;
+    font-size: 12px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* === 2. STATS GRID — 2 колонки на мобильном === */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .stat-card {
+    padding: 14px 12px !important;
+    border-radius: 10px !important;
+  }
+
+  .stat-label {
+    font-size: 11px !important;
+    margin-bottom: 4px !important;
+  }
+
+  .stat-value {
+    font-size: 18px !important;
+    margin-bottom: 2px !important;
+  }
+
+  .stat-count {
+    font-size: 11px !important;
+  }
+
+  /* === 3. PERIOD BUTTONS — компактнее === */
+  .period-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .period-buttons {
+    width: 100% !important;
+    justify-content: stretch !important;
+  }
+
+  .period-btn {
+    padding: 8px 12px !important;
+    font-size: 13px !important;
+    flex: 1 !important;
+    text-align: center !important;
+  }
+
+  /* === 4. CUSTOM PERIOD — стек на мобильном === */
+  .custom-period-inline {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .custom-period-inline .date-input {
+    flex: 1 !important;
+    min-width: 100px !important;
+  }
+
+  .custom-period-block {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .custom-period-block .date-input,
+  #customPeriodBlock .date-input {
+    flex: 1 !important;
+    min-width: 100px !important;
+    font-size: 14px !important;
+    height: 42px !important;
+  }
+
+  /* === 5. ТАБЛИЦЫ — горизонтальный скролл === */
+  .card {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* Kaspi таблицы тоже */
+  #kaspiOrdersTable,
+  #kaspiProductsTable {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  #kaspiOrdersTable table,
+  #kaspiProductsTable table {
+    min-width: 700px !important;
+  }
+
+  /* Операции, продажи, движение товаров */
+  .operations-table,
+  .products-table-full {
+    min-width: 600px !important;
+  }
+
+  /* === 6. SECTION HEADER — стек на мобильном === */
+  .section-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  .section-header .btn-secondary,
+  .section-header button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .section-title {
+    font-size: 22px !important;
+  }
+
+  /* === 7. TRADING TABS — скролл + компактнее === */
+  .trading-tabs {
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch !important;
+    gap: 6px !important;
+    padding-bottom: 4px !important;
+  }
+
+  .trading-tabs::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .trading-tabs .tab-btn {
+    flex-shrink: 0 !important;
+    padding: 8px 14px !important;
+    font-size: 13px !important;
+  }
+
+  /* === 8. KASPI TABS — компактнее === */
+  .kaspi-tab-btn {
+    padding: 7px 12px !important;
+    font-size: 12px !important;
+  }
+
+  /* === 9. МОДАЛКИ — полноэкранные === */
+  .modal-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: 16px 16px 0 0 !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
+
+  /* === 10. КНОПКИ В СЕКЦИЯХ — на всю ширину === */
+  .section-header > div {
+    width: 100% !important;
+    display: flex !important;
+    gap: 8px !important;
+  }
+
+  .section-header > div > button,
+  .section-header > div > .btn-secondary {
+    flex: 1 !important;
+  }
+
+  /* === 11. INPUTS — крупнее для тача === */
+  .card .input,
+  .card input[type="text"],
+  .card input[type="number"],
+  .card input[type="search"],
+  .card select {
+    min-height: 46px !important;
+    font-size: 16px !important;
+  }
+
+  /* === 12. P&L ROWS — компактнее === */
+  .pl-row {
+    padding: 10px 12px !important;
+    font-size: 13px !important;
+  }
+
+  .pl-row .pl-amount {
+    font-size: 14px !important;
+  }
+
+  /* === 13. SALE ROWS — компактнее === */
+  .sale-row {
+    padding: 12px !important;
+    margin-bottom: 8px !important;
+    border-radius: 10px !important;
+  }
+
+  /* === 14. KASPI STATUS BREAKDOWN — стек === */
+  #kaspi-status-breakdown {
+    flex-direction: row !important;
+    gap: 8px !important;
+  }
+
+  #kaspi-status-breakdown > div {
+    min-width: 0 !important;
+    padding: 10px 12px !important;
+  }
+
+  #kaspi-status-breakdown > div > div:nth-child(2) {
+    font-size: 16px !important;
+  }
+
+  /* === 15. KASPI FILTER BUTTONS — компактнее === */
+  #kaspiOrdersTable > div:first-child {
+    gap: 6px !important;
+  }
+
+  #kaspiOrdersTable > div:first-child button {
+    padding: 5px 10px !important;
+    font-size: 11px !important;
+  }
+
+  /* === 16. EXPORT BUTTON — полная ширина === */
+  .btn-export,
+  [onclick="exportKaspiData()"] {
+    width: 100% !important;
+    margin-top: 12px !important;
+  }
+
+  /* === 17. CHARTS — не вылезают === */
+  #kaspi-chart-container {
+    overflow-x: auto !important;
+    padding: 12px !important;
+  }
+
+  /* === 18. MONEY SECTION — кнопки Внести/Снять === */
+  #section-money .section-header > div {
+    width: 100% !important;
+  }
+
+  #section-money .section-header > div > button {
+    flex: 1 !important;
+    min-height: 44px !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   МАЛЕНЬКИЕ ЭКРАНЫ (до 380px — iPhone SE и подобные)
+   ═══════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 380px) {
+  .stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .stat-value {
+    font-size: 16px !important;
+  }
+
+  .section-title {
+    font-size: 20px !important;
+  }
+
+  .period-btn {
+    padding: 7px 8px !important;
+    font-size: 12px !important;
+  }
+
+  .report-tab-btn {
+    padding: 8px 10px !important;
+    font-size: 11px !important;
+  }
+
+  .mobile-nav-label {
+    font-size: 10px !important;
+  }
+
+  #kaspi-status-breakdown {
+    flex-direction: column !important;
+  }
+}
