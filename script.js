@@ -1324,9 +1324,11 @@ function getPeriodDates(period) {
     end.setHours(23, 59, 59, 999);
   }
 
-  if (period === 'custom') {
-    const from = document.getElementById('customFrom')?.value;
-    const to = document.getElementById('customTo')?.value;
+ if (period === 'custom') {
+    const from = document.getElementById('customFrom')?.value
+              || document.getElementById('moneyCustomFrom')?.value;
+    const to   = document.getElementById('customTo')?.value
+              || document.getElementById('moneyCustomTo')?.value;
 
     start = from ? new Date(from) : new Date();
     end = to ? new Date(to) : new Date();
@@ -2318,6 +2320,22 @@ window.changeMoneyPeriod = async function(period) {
   currentMoneyPeriod = period;
   document.querySelectorAll('#section-money .period-btn').forEach(btn => btn.classList.remove('active'));
   if (event && event.target) event.target.classList.add('active');
+
+  const customBlock = document.getElementById('moneyCustomPeriodBlock');
+  if (customBlock) {
+    if (period === 'custom') {
+      customBlock.style.display = 'flex';
+      return;
+    } else {
+      customBlock.style.display = 'none';
+    }
+  }
+
+  await loadMoneyStats();
+};
+
+window.applyMoneyCustomPeriod = async function() {
+  currentMoneyPeriod = 'custom';
   await loadMoneyStats();
 };
 
@@ -2667,60 +2685,6 @@ async function renderMoneyChart(startDate, endDate) {
     chartCard.style.display = 'none';
   }
 }
-
-window.getPeriodDates = function(period) {
-  const now = new Date();
-  let startDate;
-  let endDate = now.toISOString();
-
-  // 🔥 Новый режим custom
-  if (period === 'custom') {
-    const startInput = document.getElementById('customStartDate')?.value;
-    const endInput = document.getElementById('customEndDate')?.value;
-
-    if (!startInput || !endInput) {
-      return { startDate: now.toISOString(), endDate };
-    }
-
-    const start = new Date(startInput);
-    start.setHours(0, 0, 0, 0);
-
-    const end = new Date(endInput);
-    end.setHours(23, 59, 59, 999);
-
-    return {
-      startDate: start.toISOString(),
-      endDate: end.toISOString()
-    };
-  }
-
-  switch (period) {
-    case 'day': {
-      const dayStart = new Date(now);
-      dayStart.setHours(0, 0, 0, 0);
-      startDate = dayStart.toISOString();
-      break;
-    }
-
-    case 'week': {
-      const weekStart = new Date(now);
-      weekStart.setDate(weekStart.getDate() - 7);
-      startDate = weekStart.toISOString();
-      break;
-    }
-
-    case 'month':
-    default: {
-      const monthStart = new Date(now);
-      monthStart.setDate(monthStart.getDate() - 30);
-      startDate = monthStart.toISOString();
-      break;
-    }
-  }
-
-  return { startDate, endDate };
-}
-
 
 // =============================================
 // ПОСТАВЩИКИ
