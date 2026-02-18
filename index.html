@@ -791,10 +791,19 @@
         </div>
       </div>
 
-      <div class="period-buttons">
-        <button class="period-btn active" onclick="changeMoneyPeriod('day')">День</button>
-        <button class="period-btn" onclick="changeMoneyPeriod('week')">Неделя</button>
-        <button class="period-btn" onclick="changeMoneyPeriod('month')">Месяц</button>
+      <div class="period-row">
+        <div class="period-buttons">
+          <button class="period-btn active" onclick="changeMoneyPeriod('day')">День</button>
+          <button class="period-btn" onclick="changeMoneyPeriod('week')">Неделя</button>
+          <button class="period-btn" onclick="changeMoneyPeriod('month')">Месяц</button>
+          <button class="period-btn" onclick="changeMoneyPeriod('custom')">Период</button>
+        </div>
+        <div id="moneyCustomPeriodBlock" class="custom-period-inline" style="display:none;">
+          <input type="date" id="moneyCustomFrom" class="date-input">
+          <span class="date-separator">—</span>
+          <input type="date" id="moneyCustomTo" class="date-input">
+          <button class="period-btn" onclick="applyMoneyCustomPeriod()">OK</button>
+        </div>
       </div>
 
       <!-- Текущий баланс -->
