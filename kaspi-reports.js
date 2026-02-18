@@ -4,6 +4,7 @@
 let currentChart = null;
 let currentCompanyId = null;
 let cachedKaspiData = null;
+let currentKaspiStatusFilter = 'all'; // фильтр по статусу
 
 
 // ─── ИНИЦИАЛИЗАЦИЯ ───────────────────────────────────────────────────────────
@@ -42,16 +43,35 @@ function getCurrentPeriod() {
 }
 
 function getDateRangeForPeriod(period) {
-    // используем глобальную функцию из script.js
-    if (window.getPeriodDates) {
-        return window.getPeriodDates(period);
+  const now = new Date();
+  const endDate = now.toISOString();
+  let startDate;
+
+  switch (period) {
+    case 'day': {
+      const d = new Date(now);
+      d.setHours(0, 0, 0, 0);
+      startDate = d.toISOString();
+      break;
     }
 
-    const now = new Date();
-    const endDate = now.toISOString();
-    let startDate = endDate;
+    case 'week': {
+      const d = new Date(now);
+      d.setDate(d.getDate() - 7);
+      startDate = d.toISOString();
+      break;
+    }
 
-    return { startDate, endDate };
+    case 'month':
+    default: {
+      const d = new Date(now);
+      d.setDate(d.getDate() - 30);
+      startDate = d.toISOString();
+      break;
+    }
+  }
+
+  return { startDate, endDate };
 }
 
 
@@ -125,7 +145,7 @@ async function fetchKaspiData() {
             `)
             .eq('company_id', companyId)
             .is('deleted_at', null)
-            .eq('status', 'completed')
+            .in('status', ['completed', 'returned', 'cancelled'])
             .not('external_id', 'is', null)
             .not('external_id', 'eq', '')
             .gte('operation_at', startDate)
@@ -148,6 +168,35 @@ async function fetchKaspiData() {
     return allSales;
 }
 
+// ─── ХЕЛПЕР: СТАТУС ─────────────────────────────────────────────────────────
+
+function getStatusLabel(status) {
+    switch (status) {
+        case 'completed': return 'Продажа';
+        case 'returned':  return 'Возврат';
+        case 'cancelled': return 'Отмена';
+        default:          return status || '—';
+    }
+}
+
+function getStatusColor(status) {
+    switch (status) {
+        case 'completed': return '#10b981';
+        case 'returned':  return '#ef4444';
+        case 'cancelled': return '#6b7280';
+        default:          return 'var(--text-secondary)';
+    }
+}
+
+function getStatusBg(status) {
+    switch (status) {
+        case 'completed': return 'rgba(16,185,129,0.12)';
+        case 'returned':  return 'rgba(239,68,68,0.12)';
+        case 'cancelled': return 'rgba(107,114,128,0.12)';
+        default:          return 'rgba(100,116,139,0.1)';
+    }
+}
+
 // ─── СВОДКА (Summary) ────────────────────────────────────────────────────────
 // Маппинг на реальные ID из HTML:
 // kaspiRevenue, kaspiOrdersCount, kaspiCommission, kaspiDelivery, kaspiCost, kaspiProfit
@@ -155,17 +204,22 @@ async function fetchKaspiData() {
 function renderKaspiSummary(sales) {
     const safeSales = sales || [];
 
-    const totalRevenue    = safeSales.reduce((s, o) => s + (parseFloat(o.total_amount)            || 0), 0);
-    const totalCommission = safeSales.reduce((s, o) => s + (parseFloat(o.kaspi_commission_amount) || 0), 0);
-    const totalDelivery   = safeSales.reduce((s, o) => s + (parseFloat(o.kaspi_delivery_cost)     || 0), 0);
-    const totalNet        = safeSales.reduce((s, o) => s + (parseFloat(o.kaspi_net_amount)        || 0), 0);
-    const totalOrders     = safeSales.length;
+    // Разбивка по статусам
+    const completed = safeSales.filter(s => s.status === 'completed');
+    const returned  = safeSales.filter(s => s.status === 'returned');
+    const cancelled = safeSales.filter(s => s.status === 'cancelled');
 
-    // Считаем себестоимость через sale_items
+    const totalRevenue    = completed.reduce((s, o) => s + (parseFloat(o.total_amount) || 0), 0);
+    const totalCommission = completed.reduce((s, o) => s + (parseFloat(o.kaspi_commission_amount) || 0), 0);
+    const totalDelivery   = completed.reduce((s, o) => s + (parseFloat(o.kaspi_delivery_cost) || 0), 0);
+    const totalNet        = completed.reduce((s, o) => s + (parseFloat(o.kaspi_net_amount) || 0), 0);
+
+    const returnAmount = returned.reduce((s, o) => s + Math.abs(parseFloat(o.total_amount) || 0), 0);
+
+    // Считаем себестоимость только для completed
     let totalCost = 0;
-    safeSales.forEach(sale => {
+    completed.forEach(sale => {
         (sale.sale_items || []).forEach(item => {
-            // purchase_price может быть в products — если нет, пропускаем
             const cost = parseFloat(item.cost_price || 0);
             totalCost += cost * (item.quantity || 0);
         });
@@ -176,7 +230,7 @@ function renderKaspiSummary(sales) {
 
     // Обновляем карточки — ID берём из реального HTML
     setEl('kaspiRevenue',     formatCurrency(totalRevenue));
-    setEl('kaspiOrdersCount', totalOrders + ' заказов');
+    setEl('kaspiOrdersCount', completed.length + ' заказов');
     setEl('kaspiCommission',  formatCurrency(totalCommission));
     setEl('kaspiDelivery',    formatCurrency(totalDelivery));
     setEl('kaspiCost',        formatCurrency(totalCost));
@@ -188,7 +242,45 @@ function renderKaspiSummary(sales) {
         profitEl.style.color = profit >= 0 ? '#10b981' : '#ef4444';
     }
 
-    console.log(`Kaspi summary: ${totalOrders} orders | revenue ${totalRevenue} | net ${totalNet} | profit ${profit}`);
+    // Добавляем блок разбивки по статусам
+    renderStatusBreakdown(completed, returned, cancelled, returnAmount);
+
+    console.log(`Kaspi summary: ${completed.length} completed, ${returned.length} returned, ${cancelled.length} cancelled | revenue ${totalRevenue} | profit ${profit}`);
+}
+
+function renderStatusBreakdown(completed, returned, cancelled, returnAmount) {
+    const summaryTab = document.getElementById('kaspi-tab-summary');
+    if (!summaryTab) return;
+
+    // Удаляем старый блок если есть
+    const old = document.getElementById('kaspi-status-breakdown');
+    if (old) old.remove();
+
+    const div = document.createElement('div');
+    div.id = 'kaspi-status-breakdown';
+    div.style.cssText = 'display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;';
+
+    div.innerHTML = `
+        <div style="flex:1;min-width:140px;padding:12px 16px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:10px;">
+            <div style="font-size:11px;color:#10b981;text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin-bottom:4px;">Продажи</div>
+            <div style="font-size:18px;font-weight:700;color:#10b981;">${completed.length}</div>
+        </div>
+        <div style="flex:1;min-width:140px;padding:12px 16px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:10px;">
+            <div style="font-size:11px;color:#ef4444;text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin-bottom:4px;">Возвраты</div>
+            <div style="font-size:18px;font-weight:700;color:#ef4444;">${returned.length}</div>
+            ${returned.length > 0 ? `<div style="font-size:12px;color:#ef4444;margin-top:2px;">${formatCurrency(returnAmount)}</div>` : ''}
+        </div>
+        <div style="flex:1;min-width:140px;padding:12px 16px;background:rgba(107,114,128,0.08);border:1px solid rgba(107,114,128,0.2);border-radius:10px;">
+            <div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin-bottom:4px;">Отмены</div>
+            <div style="font-size:18px;font-weight:700;color:#6b7280;">${cancelled.length}</div>
+        </div>
+    `;
+
+    // Вставляем перед карточкой
+    const card = summaryTab.querySelector('.card');
+    if (card) {
+        summaryTab.insertBefore(div, card);
+    }
 }
 
 // ─── ЗАКАЗЫ (Orders) ─────────────────────────────────────────────────────────
@@ -202,43 +294,54 @@ function renderKaspiOrders(sales) {
         container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-secondary);">Нет заказов за выбранный период</div>';
         return;
     }
+
+    // Фильтруем по статусу
+    const filtered = currentKaspiStatusFilter === 'all'
+        ? sales
+        : sales.filter(s => s.status === currentKaspiStatusFilter);
+
 let totalAmountSum = 0;
 let totalCommissionSum = 0;
 let totalDeliverySum = 0;
 let totalCostSum = 0;
 let totalProfitSum = 0;
 
-    const rows = sales.map(order => {
+    const rows = filtered.map(order => {
 
     // считаем себестоимость
     let costTotal = 0;
     (order.sale_items || []).forEach(item => {
         const cost = parseFloat(item.cost_price || 0);
-        costTotal += cost * (item.quantity || 0);
+        costTotal += cost * Math.abs(item.quantity || 0);
     });
 const orderProfit =
     (parseFloat(order.total_amount || 0)) -
     (parseFloat(order.kaspi_commission_amount || 0)) -
     (parseFloat(order.kaspi_delivery_cost || 0)) -
-    costTotal;
+    (order.status === 'completed' ? costTotal : 0);
 
 totalAmountSum += parseFloat(order.total_amount || 0);
 totalCommissionSum += parseFloat(order.kaspi_commission_amount || 0);
 totalDeliverySum += parseFloat(order.kaspi_delivery_cost || 0);
-totalCostSum += costTotal;
+totalCostSum += (order.status === 'completed' ? costTotal : 0);
 totalProfitSum += orderProfit;
 
     const products = (order.sale_items || [])
-        .map(i => `${escapeHtml(i.products?.name || 'Неизвестно')} (${i.quantity}x)`)
+        .map(i => `${escapeHtml(i.products?.name || 'Неизвестно')} (${Math.abs(i.quantity)}x)`)
         .join(', ');
 
     return `
         <tr style="border-bottom:1px solid var(--border-color);">
             <td style="padding:12px 8px;font-size:13px;color:var(--text-primary);">
-                ${escapeHtml(order.external_id || order.external_order_id || order.id)}
+                ${escapeHtml((order.external_id || order.external_order_id || order.id).replace('_RETURN', ''))}
             </td>
             <td style="padding:12px 8px;font-size:13px;color:var(--text-secondary);">
                 ${formatKaspiDate(order.operation_at || order.created_at)}
+            </td>
+            <td style="padding:12px 8px;font-size:13px;">
+                <span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;color:${getStatusColor(order.status)};background:${getStatusBg(order.status)};">
+                    ${getStatusLabel(order.status)}
+                </span>
             </td>
             <td style="padding:12px 8px;font-size:13px;color:var(--text-primary);text-align:right;">
                 ${formatCurrency(order.total_amount || 0)}
@@ -250,12 +353,11 @@ totalProfitSum += orderProfit;
                 ${formatCurrency(order.kaspi_delivery_cost || 0)}
             </td>
             <td style="padding:12px 8px;font-size:13px;color:#ef4444;text-align:right;">
-                ${formatCurrency(costTotal)}
+                ${formatCurrency(order.status === 'completed' ? costTotal : 0)}
             </td>
-            <td style="padding:12px 8px;font-size:13px;color:#10b981;font-weight:600;text-align:right;">
-    ${formatCurrency(orderProfit)}
-
-</td>
+            <td style="padding:12px 8px;font-size:13px;color:${orderProfit >= 0 ? '#10b981' : '#ef4444'};font-weight:600;text-align:right;">
+                ${formatCurrency(orderProfit)}
+            </td>
             <td style="padding:12px 8px;font-size:13px;color:var(--text-secondary);">
                 ${order.kaspi_payment_mode || 'Kaspi'}
             </td>
@@ -263,12 +365,17 @@ totalProfitSum += orderProfit;
     `;
 }).join('');
 
+    // Кнопки фильтра
+    const filterBtns = buildStatusFilterButtons(sales);
+
     container.innerHTML = `
+        ${filterBtns}
         <table style="width:100%;border-collapse:collapse;font-size:13px;">
             <thead>
                 <tr style="border-bottom:2px solid var(--border-color);background:var(--bg-secondary);">
                     <th style="padding:12px 8px;text-align:left;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;font-size:11px;">ID заказа</th>
                     <th style="padding:12px 8px;text-align:left;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;font-size:11px;">Дата</th>
+                    <th style="padding:12px 8px;text-align:left;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;font-size:11px;">Статус</th>
                     <th style="padding:12px 8px;text-align:right;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;font-size:11px;">Сумма</th>
                     <th style="padding:12px 8px;text-align:right;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;font-size:11px;">Комиссия</th>
                     <th style="padding:12px 8px;text-align:right;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;font-size:11px;">Доставка</th>
@@ -281,7 +388,7 @@ totalProfitSum += orderProfit;
                 ${rows}
 
                     <tr style="border-top:2px solid var(--border-color);background:var(--bg-secondary);font-weight:700;">
-        <td colspan="2" style="padding:14px 8px;">ИТОГО</td>
+        <td colspan="3" style="padding:14px 8px;">ИТОГО (${filtered.length})</td>
         <td style="padding:14px 8px;text-align:right;">${formatCurrency(totalAmountSum)}</td>
         <td style="padding:14px 8px;text-align:right;">${formatCurrency(totalCommissionSum)}</td>
         <td style="padding:14px 8px;text-align:right;">${formatCurrency(totalDeliverySum)}</td>
@@ -293,6 +400,40 @@ totalProfitSum += orderProfit;
             </tbody>
         </table>
     `;
+}
+
+// ─── КНОПКИ ФИЛЬТРА ПО СТАТУСУ ──────────────────────────────────────────────
+
+function buildStatusFilterButtons(sales) {
+    const counts = { all: sales.length, completed: 0, returned: 0, cancelled: 0 };
+    sales.forEach(s => {
+        if (counts[s.status] !== undefined) counts[s.status]++;
+    });
+
+    const buttons = [
+        { key: 'all',       label: 'Все',      color: 'var(--text-primary)' },
+        { key: 'completed', label: 'Продажи',  color: '#10b981' },
+        { key: 'returned',  label: 'Возвраты', color: '#ef4444' },
+        { key: 'cancelled', label: 'Отмены',   color: '#6b7280' },
+    ];
+
+    const btns = buttons.map(b => {
+        const isActive = currentKaspiStatusFilter === b.key;
+        const bg = isActive ? b.color : 'var(--bg-secondary)';
+        const textColor = isActive ? '#fff' : b.color;
+        const border = isActive ? 'none' : `1px solid var(--border-color)`;
+
+        return `<button onclick="filterKaspiByStatus('${b.key}')" style="padding:6px 14px;background:${bg};color:${textColor};border:${border};border-radius:20px;cursor:pointer;font-size:12px;font-weight:600;">${b.label} (${counts[b.key]})</button>`;
+    }).join('');
+
+    return `<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">${btns}</div>`;
+}
+
+function filterKaspiByStatus(status) {
+    currentKaspiStatusFilter = status;
+    if (cachedKaspiData) {
+        renderKaspiOrders(cachedKaspiData);
+    }
 }
 
 // ─── ТОВАРЫ (Products) ───────────────────────────────────────────────────────
@@ -332,7 +473,7 @@ function renderKaspiProducts(sales) {
 
             productStats[productId].quantity += qty;
             productStats[productId].revenue += qty * price;
-            productStats[productId].cost += qty * cost;
+            productStats[productId].cost += Math.abs(qty) * cost;
         });
     });
 
@@ -358,7 +499,7 @@ function renderKaspiProducts(sales) {
                 <td style="padding:12px 8px;font-size:13px;color:#ef4444;text-align:right;">
                     ${formatCurrency(product.cost)}
                 </td>
-                <td style="padding:12px 8px;font-size:13px;font-weight:600;text-align:right;" style="color:${profitColor};">
+                <td style="padding:12px 8px;font-size:13px;font-weight:600;text-align:right;color:${profitColor};">
                     ${formatCurrency(profit)}
                 </td>
             </tr>
@@ -569,14 +710,15 @@ function exportKaspiData() {
         return;
     }
 
-    const headers = ['ID заказа', 'Дата', 'Сумма', 'Комиссия', 'Доставка', 'Нетто', 'Клиент', 'Тип оплаты', 'Товары'];
+    const headers = ['ID заказа', 'Дата', 'Статус', 'Сумма', 'Комиссия', 'Доставка', 'Нетто', 'Клиент', 'Тип оплаты', 'Товары'];
     const rows = data.map(o => {
         const products = (o.sale_items || [])
-            .map(i => `${i.products?.name || 'Неизвестно'} (${i.quantity}x)`)
+            .map(i => `${i.products?.name || 'Неизвестно'} (${Math.abs(i.quantity)}x)`)
             .join('; ');
         return [
-            o.external_id || o.id,
+            (o.external_id || o.id).replace('_RETURN', ''),
             formatKaspiDate(o.operation_at || o.created_at),
+            getStatusLabel(o.status),
             o.total_amount || 0,
             o.kaspi_commission_amount || 0,
             o.kaspi_delivery_cost || 0,
@@ -604,7 +746,8 @@ function exportKaspiData() {
 }
 
 // ─── ГЛОБАЛЬНЫЙ ЭКСПОРТ ───────────────────────────────────────────────────────
-window.initKaspiReports  = initKaspiReports;
-window.switchKaspiTab    = switchKaspiTab;
-window.exportKaspiData   = exportKaspiData;
-window.loadKaspiData     = loadKaspiData;
+window.initKaspiReports    = initKaspiReports;
+window.switchKaspiTab      = switchKaspiTab;
+window.exportKaspiData     = exportKaspiData;
+window.loadKaspiData       = loadKaspiData;
+window.filterKaspiByStatus = filterKaspiByStatus;
