@@ -3527,3 +3527,15 @@ body {
     flex-direction: column !important;
   }
 }
+/* FIX — мобильная навигация не ломается */
+@media (max-width: 768px) {
+  .mobile-bottom-nav button,
+  .mobile-nav-item {
+    width: auto !important;
+    flex: 1 !important;
+  }
+
+  .section-header .mobile-nav-item {
+    width: auto !important;
+  }
+}
