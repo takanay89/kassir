@@ -1,5 +1,5 @@
 // ============================================
-// MOBILE NAVIGATION SYNC FIX
+// MOBILE NAVIGATION SYNC FIX (SAFE VERSION)
 // ============================================
 
 function updateMobileNavigation(section) {
@@ -13,30 +13,16 @@ function updateMobileNavigation(section) {
   });
 }
 
-// Ждём пока script.js загрузится и создаст showSection
-// Затем оборачиваем его чтобы добавить обновление мобильной навигации
-function patchShowSection() {
-  const original = window.showSection;
-  if (typeof original !== 'function') {
-    // script.js ещё не загрузился, ждём
-    setTimeout(patchShowSection, 50);
-    return;
+// НЕ переопределяем showSection!
+// Просто слушаем клики и обновляем меню
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('[data-section]');
+  if (!btn) return;
+
+  const section = btn.getAttribute('data-section');
+  if (section) {
+    setTimeout(() => updateMobileNavigation(section), 0);
   }
+});
 
-  // Проверяем что ещё не патчили
-  if (original._mobilePatched) return;
-
-  window.showSection = function(section) {
-    original(section);
-    updateMobileNavigation(section);
-  };
-  window.showSection._mobilePatched = true;
-
-  console.log('✅ Mobile nav patched');
-}
-
-// Запускаем патч
-patchShowSection();
-
-// Экспорт
 window.updateMobileNavigation = updateMobileNavigation;
