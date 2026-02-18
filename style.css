@@ -3539,3 +3539,13 @@ body {
     width: auto !important;
   }
 }
+
+/* FIX — Продажа и Чек одинаковой ширины на мобильном */
+@media (max-width: 768px) {
+  .trading-grid .left-panel,
+  .trading-grid .right-panel {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+}
