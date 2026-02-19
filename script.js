@@ -2497,7 +2497,7 @@ async function loadMoneyStats() {
     // 1. Продажи — выручка + себестоимость
     const { data: sales, error: salesErr } = await supabase
       .from('sales')
-      .select('total_amount, external_id, sale_items(quantity, price, cost_price)')      .eq('company_id', COMPANY_ID)
+      .select('total_amount, external_id, kaspi_commission_amount, kaspi_delivery_cost, kaspi_net_amount, sale_items(quantity, price, cost_price)')     .eq('company_id', COMPANY_ID)
       .eq('status', 'completed')
       .gt('total_amount', 0)
       .is('deleted_at', null)
@@ -2510,12 +2510,14 @@ async function loadMoneyStats() {
     let shopCount = 0, kaspiCount = 0;
     (sales || []).forEach(s => {
       const amt = Number(s.total_amount);
-      revenue += amt;
       if (s.external_id) {
-        revenueKaspi += amt;
+        const netAmt = Number(s.kaspi_net_amount || 0);
+        revenueKaspi += netAmt;
+        revenue += netAmt;
         kaspiCount++;
       } else {
         revenueShop += amt;
+        revenue += amt;
         shopCount++;
       }
       (s.sale_items || []).forEach(i => {
