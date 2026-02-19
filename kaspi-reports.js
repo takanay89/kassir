@@ -44,35 +44,54 @@ function getCurrentPeriod() {
 
 function getDateRangeForPeriod(period) {
   const now = new Date();
-  const endDate = now.toISOString();
-  let startDate;
+  let start;
+  let end;
 
-  switch (period) {
-    case 'day': {
-      const d = new Date(now);
-      d.setHours(0, 0, 0, 0);
-      startDate = d.toISOString();
-      break;
-    }
+  if (period === 'day') {
+    start = new Date(now);
+    start.setHours(0, 0, 0, 0);
 
-    case 'week': {
-      const d = new Date(now);
-      d.setDate(d.getDate() - 7);
-      startDate = d.toISOString();
-      break;
-    }
-
-    case 'month':
-    default: {
-      const d = new Date(now);
-      d.setDate(d.getDate() - 30);
-      startDate = d.toISOString();
-      break;
-    }
+    end = new Date(now);
+    end.setHours(23, 59, 59, 999);
   }
 
-  return { startDate, endDate };
+  if (period === 'week') {
+    const day = now.getDay() || 7;
+
+    start = new Date(now);
+    start.setDate(now.getDate() - day + 1);
+    start.setHours(0, 0, 0, 0);
+
+    end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+  }
+
+  if (period === 'month') {
+    start = new Date(now.getFullYear(), now.getMonth(), 1);
+    start.setHours(0, 0, 0, 0);
+
+    end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    end.setHours(23, 59, 59, 999);
+  }
+
+  if (period === 'custom') {
+    const from = document.getElementById('customFrom')?.value;
+    const to   = document.getElementById('customTo')?.value;
+
+    start = from ? new Date(from) : new Date();
+    end   = to   ? new Date(to)   : new Date();
+
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+  }
+
+  return {
+    startDate: start.toISOString(),
+    endDate: end.toISOString()
+  };
 }
+
 
 
 
