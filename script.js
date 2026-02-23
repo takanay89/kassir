@@ -1290,6 +1290,11 @@ window.changePeriod = async function(period) {
     }
 
     loadCurrentReportTab();
+    // если открыта вкладка Kaspi — перезагружаем её
+if (currentReportTab === 'kaspi' && typeof window.loadKaspiData === 'function') {
+    window.loadKaspiData();
+}
+
 };
 
 window.applyCustomPeriod = function() {
@@ -1319,10 +1324,12 @@ function getPeriodDates(period) {
   }
 
   if (period === 'month') {
-    start = new Date(now.getFullYear(), now.getMonth(), 1);
-    end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    end.setHours(23, 59, 59, 999);
-  }
+  start = new Date(now.getFullYear(), now.getMonth(), 1);
+  start.setHours(0, 0, 0, 0);   // ← ВАЖНО
+
+  end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  end.setHours(23, 59, 59, 999);
+}
 
  if (period === 'custom') {
     const from = document.getElementById('customFrom')?.value
@@ -1477,6 +1484,7 @@ async function loadReportSales() {
             <th style="text-align:right;padding:9px 8px;color:var(--text-secondary);font-weight:600;font-size:11px;letter-spacing:.05em;">СКИДКА</th>
             <th style="text-align:right;padding:9px 8px;color:var(--text-secondary);font-weight:600;font-size:11px;letter-spacing:.05em;">СУММА</th>
             <th style="text-align:left;padding:9px 8px;color:var(--text-secondary);font-weight:600;font-size:11px;letter-spacing:.05em;">СТАТУС</th>
+            <th style="text-align:center;padding:9px 8px;color:var(--text-secondary);font-weight:600;font-size:11px;letter-spacing:.05em;">УДАЛИТЬ</th>
           </tr>
         </thead>
         <tbody>
@@ -1485,6 +1493,9 @@ async function loadReportSales() {
             const disc  = Number(r.discount_amount || 0);
             const isReturn = Number(r.total_amount) < 0;
             const rowColor = '';
+            const deleteBtn = r.status === 'completed'
+              ? `<button class="btn-delete-sale" onclick="deleteSale('${r.id}')" style="background:transparent;color:#ef4444;border:none;cursor:pointer;font-size:16px;padding:4px;">🗑</button>`
+              : '';
             return `
               <tr style="border-bottom:1px solid var(--border-color);background:${rowColor};" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='${rowColor}'">
                 <td style="padding:10px 8px;color:var(--text-secondary);white-space:nowrap;">${window.formatDate(r.operation_at)}</td>
@@ -1494,6 +1505,7 @@ async function loadReportSales() {
                 <td style="padding:10px 8px;text-align:right;color:${disc > 0 ? '#f59e0b' : 'var(--text-secondary)'};">${disc > 0 ? '−' + formatMoney(disc) : '—'}</td>
                 <td style="padding:10px 8px;text-align:right;font-weight:600;color:${isReturn ? '#ef4444' : 'var(--text-primary)'};">${formatMoney(r.total_amount)}</td>
                 <td style="padding:10px 8px;font-size:12px;">${STATUS[r.status] || r.status}</td>
+                <td style="padding:10px 8px;text-align:center;">${deleteBtn}</td>
               </tr>`;
           }).join('')}
         </tbody>
@@ -1504,6 +1516,19 @@ async function loadReportSales() {
     if (container) container.innerHTML = `<div style="text-align:center;padding:20px;color:#ef4444;">Ошибка: ${err.message}</div>`;
   }
 }
+
+window.deleteSale = async function(saleId) {
+  if (!confirm('Удалить продажу безвозвратно?')) return;
+  const { error } = await supabase.rpc('delete_sale_cascade', {
+    p_sale_id: saleId
+  });
+  if (error) {
+    showToast('Ошибка удаления', 'error');
+    return;
+  }
+  showToast('Продажа удалена', 'success');
+  loadReportSales();
+};
 
 // ---- ТАБ 2.5: Возвраты (refunded/negative sales) ----
 async function loadReportReturns() {
