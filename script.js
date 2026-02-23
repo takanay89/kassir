@@ -1580,6 +1580,7 @@ async function loadReportReturns() {
             <th style="text-align:left;padding:9px 8px;color:var(--text-secondary);font-weight:600;font-size:11px;letter-spacing:.05em;">ОПЛАТА</th>
             <th style="text-align:right;padding:9px 8px;color:var(--text-secondary);font-weight:600;font-size:11px;letter-spacing:.05em;">СУММА</th>
             <th style="text-align:left;padding:9px 8px;color:var(--text-secondary);font-weight:600;font-size:11px;letter-spacing:.05em;">КОММЕНТАРИЙ</th>
+            <th style="text-align:center;padding:9px 8px;color:var(--text-secondary);font-weight:600;font-size:11px;letter-spacing:.05em;">УДАЛИТЬ</th>
           </tr>
         </thead>
         <tbody>
@@ -1593,6 +1594,7 @@ async function loadReportReturns() {
                 <td style="padding:10px 8px;color:var(--text-secondary);">${r.payment_methods?.name || '—'}</td>
                 <td style="padding:10px 8px;text-align:right;font-weight:600;color:#ef4444;">${formatMoney(Math.abs(r.total_amount))}</td>
                 <td style="padding:10px 8px;color:var(--text-secondary);max-width:200px;overflow:hidden;text-overflow:ellipsis;" title="${r.comment || ''}">${r.comment || '—'}</td>
+                <td style="padding:10px 8px;text-align:center;"><button class="btn-delete-return" onclick="deleteSale('${r.id}')" style="background:transparent;color:#ef4444;border:none;cursor:pointer;font-size:16px;padding:4px;">🗑</button></td>
               </tr>`;
           }).join('')}
         </tbody>
