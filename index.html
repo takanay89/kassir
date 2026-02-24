@@ -42,6 +42,46 @@
     .btn-return-sm:hover { background: #ede9fe; border-color: #a78bfa; }
     
     /* Стили для выбора магазина */
+    /* Mobile fix: prevent datetime and form elements from overflowing */
+    @media (max-width: 768px) {
+      .right-panel {
+        overflow-x: hidden;
+        max-width: 100vw;
+        box-sizing: border-box;
+      }
+      .right-panel .form-group {
+        max-width: 100%;
+        overflow: hidden;
+        box-sizing: border-box;
+      }
+      .right-panel .form-group input[type="datetime-local"] {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        font-size: 14px;
+        min-width: 0;
+      }
+      .right-panel .form-group textarea {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        min-width: 0;
+      }
+      .right-panel .card,
+      .right-panel .total-card {
+        max-width: 100%;
+        overflow: hidden;
+        box-sizing: border-box;
+      }
+      .right-panel .discount-inputs {
+        flex-wrap: wrap;
+      }
+      .right-panel .discount-inputs .input-small {
+        min-width: 0;
+        flex: 1;
+      }
+    }
+    
     .store-location-item:hover {
       background: #4b5563 !important;
       transform: translateX(4px);
