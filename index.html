@@ -468,10 +468,10 @@
 
       <!-- Вкладки -->
       <div class="trading-tabs">
-        <button class="tab-btn active" data-tab="catalog" onclick="switchProductsTab('catalog')">
+        <button class="tab-btn" data-tab="catalog" onclick="switchProductsTab('catalog')">
           ТОВАРЫ
         </button>
-        <button class="tab-btn" data-tab="stock" onclick="switchProductsTab('stock')">
+        <button class="tab-btn active" data-tab="stock" onclick="switchProductsTab('stock')">
           ОСТАТКИ
         </button>
         <button class="tab-btn" data-tab="income" onclick="switchProductsTab('income')">
@@ -491,7 +491,7 @@
         <!-- ═══════════════════════════════════════════════════════════════════ -->
         <!-- TAB 1: ТОВАРЫ (Весь каталог) -->
         <!-- ═══════════════════════════════════════════════════════════════════ -->
-        <div class="trading-tab-content active" id="tab-catalog">
+        <div class="trading-tab-content" id="tab-catalog">
           <div class="card">
             <div class="card-title">Каталог товаров и услуг</div>
             
@@ -527,7 +527,7 @@
         <!-- ═══════════════════════════════════════════════════════════════════ -->
         <!-- TAB 2: ОСТАТКИ (Текущие остатки на складе) -->
         <!-- ═══════════════════════════════════════════════════════════════════ -->
-        <div class="trading-tab-content" id="tab-stock">
+        <div class="trading-tab-content active" id="tab-stock">
           <div class="card">
             <div class="card-title">Текущие остатки на складе</div>
             
