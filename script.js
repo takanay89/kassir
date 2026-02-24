@@ -1125,7 +1125,7 @@ window.showSection = function(name) {
     window.switchTradingTab && window.switchTradingTab('sale');
   }
 
-  if (name === 'products') loadProductsTable();
+  if (name === 'products') switchProductsTab('stock');
   if (name === 'money') loadMoneyStats();
   if (name === 'reports') loadReportsStats();
   if (name === 'expenses') loadExpenseStats();
