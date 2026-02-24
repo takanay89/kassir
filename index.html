@@ -83,49 +83,12 @@
         min-width: 0;
         flex: 1;
       }
-      /* Fix: return tab sales list - prevent horizontal scroll and fit buttons */
+      /* Fix: return tab - prevent horizontal overflow */
+      .left-panel,
+      #tab-return,
+      #returnSearchCard,
+      #returnSalesList,
       .sales-list {
-        max-width: 100%;
-        overflow-x: hidden;
-      }
-      .sales-list > div,
-      .sales-list > a {
-        max-width: 100%;
-        box-sizing: border-box;
-        overflow: hidden;
-        flex-wrap: wrap !important;
-      }
-      .sales-list > div > div,
-      .sales-list > a > div {
-        min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      /* Sale items - make layout vertical on mobile */
-      .sales-list > div {
-        flex-direction: column !important;
-        align-items: flex-start !important;
-        gap: 8px !important;
-        padding: 12px !important;
-      }
-      .sales-list > div > div[style*="display:flex"][style*="justify-content"],
-      .sales-list > div > div[style*="display: flex"][style*="justify-content"] {
-        width: 100% !important;
-        flex-wrap: wrap !important;
-        gap: 6px !important;
-      }
-      /* Ensure action buttons fit */
-      .sales-list button,
-      .sales-list .btn-primary,
-      .sales-list .btn-secondary,
-      .sales-list [onclick] {
-        white-space: nowrap;
-        flex-shrink: 0;
-        font-size: 12px !important;
-        padding: 6px 10px !important;
-      }
-      /* Left panel in return tab */
-      .left-panel {
         max-width: 100%;
         overflow-x: hidden;
         box-sizing: border-box;
@@ -135,42 +98,92 @@
         overflow: hidden;
         box-sizing: border-box;
       }
-      #tab-return {
-        max-width: 100%;
-        overflow-x: hidden;
+
+      /* ===== Return sales table → card layout on mobile ===== */
+      .return-sales-table {
+        display: block;
+        width: 100%;
       }
-      #returnSearchCard {
-        max-width: 100%;
-        overflow: hidden;
+      .return-sales-table thead {
+        display: none;
       }
-      #returnSalesList {
-        max-width: 100%;
-        overflow-x: hidden;
+      .return-sales-table tbody {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
       }
-      #returnSalesList > div {
-        flex-direction: column !important;
-        align-items: stretch !important;
-        gap: 8px !important;
-        max-width: 100% !important;
-        box-sizing: border-box !important;
-        word-break: break-word;
+      .return-sales-table tbody tr {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 0;
+        background: var(--bg-secondary, rgba(255,255,255,0.04));
+        border: 1px solid var(--border, rgba(255,255,255,0.08));
+        border-radius: 12px;
+        padding: 12px 14px;
+        box-sizing: border-box;
       }
-      #returnSalesList > div > div {
-        width: 100% !important;
-        min-width: 0 !important;
-        flex-wrap: wrap !important;
+      .return-sales-table tbody tr td {
+        padding: 0 !important;
+        text-align: left !important;
+        white-space: normal !important;
+        overflow: visible !important;
+        border: none !important;
       }
-      #returnSalesList > div > div > span,
-      #returnSalesList > div > div > div {
-        min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
+      /* Row 1: Date + Amount on one line */
+      .return-sales-table tbody tr td.col-date {
+        width: auto;
+        font-size: 13px;
+        color: var(--text-secondary, #94a3b8);
+        margin-right: auto;
       }
-      /* Make sure action buttons go on their own row */
-      #returnSalesList button {
-        width: 100% !important;
+      .return-sales-table tbody tr td.col-amount {
+        width: auto;
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--accent, #3b82f6);
+      }
+      /* Row 2: Items - full width */
+      .return-sales-table tbody tr td.col-items {
+        width: 100%;
+        order: 3;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-primary, #e2e8f0);
+        padding-top: 4px !important;
+      }
+      .return-sales-table tbody tr td.col-items .cell-truncate {
+        display: block;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: unset;
+        line-height: 1.4;
+      }
+      /* Row 3: Payment */
+      .return-sales-table tbody tr td.col-payment {
+        width: 100%;
+        order: 4;
+        font-size: 12px;
+        color: var(--text-secondary, #94a3b8);
+        padding-top: 2px !important;
+      }
+      .return-sales-table tbody tr td.col-payment::before {
+        content: "Оплата: ";
+        font-weight: 600;
+      }
+      /* Row 4: Action button - full width */
+      .return-sales-table tbody tr td.col-action {
+        width: 100%;
+        order: 5;
+        padding-top: 8px !important;
+      }
+      .return-sales-table tbody tr td.col-action .btn-select-sale {
+        width: 100%;
         box-sizing: border-box;
         text-align: center;
+        padding: 10px 16px;
+        font-size: 14px;
+        border-radius: 8px;
       }
     }
     
