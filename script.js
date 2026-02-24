@@ -3373,6 +3373,38 @@ window.saveEditProduct = async function() {
   }
 };
 
+// =============================================
+// УДАЛЕНИЕ ТОВАРА (мягкое — active = false)
+// =============================================
+window.deleteProduct = async function(productId, productName) {
+  if (!confirm(`Удалить товар "${productName}"?\n\nТовар будет скрыт из каталога. История продаж сохранится.`)) {
+    return;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('products')
+      .update({ active: false })
+      .eq('id', productId);
+
+    if (error) throw error;
+
+    showToast('✅ Товар удалён');
+
+    // Убираем из кеша
+    PRODUCTS_CACHE = PRODUCTS_CACHE.filter(p => p.id !== productId);
+    window.PRODUCTS_CACHE = PRODUCTS_CACHE;
+
+    // Обновляем таблицу
+    loadProductsTable();
+    if (typeof renderIncomeProductsList === 'function') renderIncomeProductsList();
+
+  } catch (err) {
+    console.error('Delete product error:', err);
+    showToast('❌ Ошибка: ' + (err.message || 'Неизвестная ошибка'), 'error');
+  }
+};
+
 // Запуск приложения
 init();
 // ═══════════════════════════════════════════════════════════════════
@@ -3484,6 +3516,9 @@ function renderCatalogTable(products) {
                       ⬇️
                     </button>
                   ` : ''}
+                  <button class="btn-icon-sm" onclick="deleteProduct('${product.id}', '${product.name.replace(/'/g, "\\'")}')" title="Удалить" style="color:#ef4444;">
+                    🗑️
+                  </button>
                 </div>
               </td>
             </tr>
