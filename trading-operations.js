@@ -574,24 +574,49 @@ async function loadRecentSalesForReturn() {
     
     if (error) throw error;
 
-    // Получаем ID продаж у которых уже есть возврат (related_sale_id указывает на них)
+    // Получаем все возвраты для этих продаж (с позициями)
     const saleIds = (data || []).map(s => s.id);
-    let returnedIds = new Set();
+    let returnedItemsMap = {}; // { saleId: { productId: returnedQty } }
 
     if (saleIds.length > 0) {
       const { data: returnData } = await supabase
         .from('sales')
-        .select('related_sale_id')
+        .select(`
+          related_sale_id,
+          sale_items (product_id, quantity)
+        `)
         .eq('company_id', window.COMPANY_ID)
         .not('related_sale_id', 'is', null)
         .is('deleted_at', null)
         .in('related_sale_id', saleIds);
 
-      returnedIds = new Set((returnData || []).map(r => r.related_sale_id));
+      // Суммируем возвращённые количества по каждому товару каждой продажи
+      (returnData || []).forEach(ret => {
+        const saleId = ret.related_sale_id;
+        if (!returnedItemsMap[saleId]) returnedItemsMap[saleId] = {};
+        (ret.sale_items || []).forEach(item => {
+          const pid = item.product_id;
+          returnedItemsMap[saleId][pid] = (returnedItemsMap[saleId][pid] || 0) + Number(item.quantity);
+        });
+      });
     }
 
-    // Исключаем продажи у которых уже есть возврат
-    const filteredData = (data || []).filter(sale => !returnedIds.has(sale.id));
+    // Для каждой продажи вычитаем уже возвращённые количества
+    const filteredData = (data || []).map(sale => {
+      const returnedItems = returnedItemsMap[sale.id];
+      if (!returnedItems) return sale; // нет возвратов — показываем как есть
+
+      // Уменьшаем quantity на уже возвращённое
+      const remainingItems = (sale.sale_items || []).map(item => {
+        const returned = returnedItems[item.product_id] || 0;
+        const remaining = Number(item.quantity) - returned;
+        return { ...item, quantity: remaining };
+      }).filter(item => item.quantity > 0); // убираем полностью возвращённые
+
+      if (remainingItems.length === 0) return null; // всё возвращено — скрываем
+
+      return { ...sale, sale_items: remainingItems };
+    }).filter(Boolean);
     
     RECENT_SALES_CACHE = filteredData;
     renderRecentSales(RECENT_SALES_CACHE);
