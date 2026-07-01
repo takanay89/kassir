@@ -37,12 +37,6 @@ function relocatePosNodes() {
   const leftPanel = sectionTrading.querySelector('.left-panel');
   if (leftPanel) receiptArea.appendChild(leftPanel);
 
-  // Product grid moves into the "Быстрые товары" flyout; the search box stays
-  // in tab-sale (visible above the cart) so scanning/typing is always available.
-  const productsList = document.getElementById('productsList');
-  const quickGridSlot = document.getElementById('posQuickGridSlot');
-  if (productsList && quickGridSlot) quickGridSlot.appendChild(productsList);
-
   const cartCard = document.getElementById('cart')?.closest('.card');
   if (cartCard) receiptArea.appendChild(cartCard);
 
@@ -321,57 +315,27 @@ function wireRail() {
   }
 }
 
-// ---------- Быстрые товары (pinned quick products) ----------
-function quickPinsKey() { return `pos_quick_products_${window.COMPANY_ID}`; }
-function getPinnedIds() {
-  try { return JSON.parse(localStorage.getItem(quickPinsKey()) || '[]'); } catch { return []; }
-}
-function savePinnedIds(ids) { localStorage.setItem(quickPinsKey(), JSON.stringify(ids)); }
-
+// ---------- Быстрые товары (all company products from DB cache) ----------
 function renderQuickPins() {
   const container = document.getElementById('posQuickPins');
   if (!container) return;
-  const ids = getPinnedIds();
-  const products = (window.PRODUCTS_CACHE || []).filter(p => ids.includes(p.id));
+  const products = window.PRODUCTS_CACHE || [];
   if (!products.length) {
-    container.innerHTML = '<div class="pos-quick-empty-hint">Нет закреплённых товаров. Найдите товар в поиске справа и нажмите ★ рядом с ним, чтобы закрепить здесь.</div>';
+    container.innerHTML = '<div class="pos-quick-empty-hint">Товары загружаются...</div>';
     return;
   }
   container.innerHTML = products.map(p => `
     <div class="pos-quick-pin-tile" data-pin-tile="${p.id}">
-      <span class="pos-pin-toggle" data-unpin="${p.id}" title="Убрать из быстрых">★</span>
-      <div>${p.name}</div>
-      <div style="opacity:.7;font-size:12px;">${fmt(p.base_price)}</div>
+      <div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}</div>
+      <div style="opacity:.65;font-size:12px;margin-top:2px;">${fmt(p.base_price)}</div>
     </div>
   `).join('');
 }
 
 function wireQuickPins() {
   document.getElementById('posQuickPins').addEventListener('click', (e) => {
-    const unpin = e.target.closest('[data-unpin]');
-    if (unpin) {
-      savePinnedIds(getPinnedIds().filter(id => id !== unpin.dataset.unpin));
-      renderQuickPins();
-      return;
-    }
     const tile = e.target.closest('[data-pin-tile]');
     if (tile) window.addToCart && window.addToCart(tile.dataset.pinTile);
-  });
-
-  // Pin/unpin from the full catalog grid inside the same flyout:
-  // double-click a product card to toggle its pin (single click still adds to cart).
-  document.getElementById('posQuickGridSlot').addEventListener('dblclick', (e) => {
-    const card = e.target.closest('.product-card');
-    if (!card) return;
-    const onclick = card.getAttribute('onclick') || '';
-    const match = onclick.match(/addToCart\('([^']+)'\)/);
-    if (!match) return;
-    const id = match[1];
-    const ids = getPinnedIds();
-    if (ids.includes(id)) savePinnedIds(ids.filter(x => x !== id));
-    else savePinnedIds([...ids, id]);
-    renderQuickPins();
-    toast(ids.includes(id) ? 'Товар откреплён' : 'Товар закреплён в быстрых', 'success');
   });
 }
 
@@ -751,18 +715,16 @@ function wireDrawer() {
   });
   document.getElementById('posDrawerSettings').addEventListener('click', () => {
     closeDrawer();
-    document.querySelectorAll('.pos-tab').forEach(b => b.classList.remove('active'));
-    window.showSection && window.showSection('settings');
-    setChromeMinimal(true);
+    toast('Настройки — скоро', 'success');
   });
   document.getElementById('posDrawerGoToDashboard').addEventListener('click', () => {
     closeDrawer();
-    if (window.opener && !window.opener.closed) window.opener.focus();
-    else window.location.href = 'index.html';
+    window.location.href = 'index.html';
   });
-  document.getElementById('posDrawerLogout').addEventListener('click', () => {
+  document.getElementById('posDrawerLogout').addEventListener('click', async () => {
     closeDrawer();
-    window.logout && window.logout();
+    await supabase.auth.signOut();
+    window.location.href = 'login.html';
   });
 }
 
