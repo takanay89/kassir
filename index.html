@@ -1703,6 +1703,7 @@
 
   <!-- trading-operations грузится первым чтобы window.switchTradingTab и другие функции были готовы до инициализации script.js -->
   <script type="module" src="trading-operations.js"></script>
+  <script type="module" src="checkout.js"></script>
   <script type="module" src="excel-import.js"></script>
   <script type="module" src="settings.js"></script>
   <script type="module" src="kaspi-reports.js"></script>
@@ -1743,6 +1744,209 @@
 
 
   <!-- MODAL: EDIT PRODUCT -->
+  <!-- ================================================= -->
+  <!-- CHECKOUT OVERLAY — экран оплаты (Наличные/Безналичная/Смешанная/В долг) -->
+  <!-- ================================================= -->
+  <div class="checkout-overlay" id="checkoutOverlay">
+    <div class="co-header">
+      <button class="co-back" onclick="window.closeCheckout()">
+        <span style="font-size:18px;">‹</span> Назад
+      </button>
+      <div class="co-tabs">
+        <button class="co-tab active" data-tab="cash" onclick="window.switchCheckoutTab('cash')">Наличные</button>
+        <button class="co-tab" data-tab="card" onclick="window.switchCheckoutTab('card')">Безналичная</button>
+        <button class="co-tab" data-tab="mixed" onclick="window.switchCheckoutTab('mixed')">Смешанная</button>
+        <button class="co-tab" data-tab="debt" onclick="window.switchCheckoutTab('debt')">В долг</button>
+      </div>
+      <button class="co-customer-btn" id="coCustomerBtn" onclick="window.openCheckoutCustomer()">Выбрать покупателя</button>
+    </div>
+
+    <div class="co-body">
+
+      <!-- ===== НАЛИЧНЫЕ ===== -->
+      <div class="co-panel active" id="co-panel-cash">
+        <div class="co-calc">
+          <div class="co-amount-box">
+            <input type="text" class="co-amount-input" id="cashAmountInput" value="0" readonly>
+            <span class="co-amount-currency">₸</span>
+          </div>
+          <div class="co-calc-grid">
+            <div class="co-quick-col">
+              <button class="co-noquick" data-role="noshange" onclick="window.coCashNoChange()">
+                <span id="cashNoChangeLabel">Без сдачи</span>
+              </button>
+              <div class="co-quick-grid">
+                <button class="co-chip co-chip-blue" onclick="window.coCashAdd(500)">+500 ₸</button>
+                <button class="co-chip co-chip-yellow" onclick="window.coCashAdd(1000)">+1 000 ₸</button>
+                <button class="co-chip co-chip-green" onclick="window.coCashAdd(2000)">+2 000 ₸</button>
+                <button class="co-chip co-chip-red" onclick="window.coCashAdd(5000)">+5 000 ₸</button>
+                <button class="co-chip co-chip-cyan" onclick="window.coCashAdd(10000)">+10 000 ₸</button>
+                <button class="co-chip co-chip-purple" onclick="window.coCashAdd(20000)">+20 000 ₸</button>
+              </div>
+            </div>
+            <div class="co-keypad">
+              <button onclick="window.coKeypad('cash','1')">1</button>
+              <button onclick="window.coKeypad('cash','2')">2</button>
+              <button onclick="window.coKeypad('cash','3')">3</button>
+              <button class="co-key-del" onclick="window.coKeypad('cash','back')">⌫</button>
+              <button onclick="window.coKeypad('cash','4')">4</button>
+              <button onclick="window.coKeypad('cash','5')">5</button>
+              <button onclick="window.coKeypad('cash','6')">6</button>
+              <button onclick="window.coKeypad('cash','7')">7</button>
+              <button onclick="window.coKeypad('cash','8')">8</button>
+              <button onclick="window.coKeypad('cash','9')">9</button>
+              <button class="co-key-clear" onclick="window.coKeypad('cash','clear')">C</button>
+              <button onclick="window.coKeypad('cash','0')">0</button>
+              <button onclick="window.coKeypad('cash','00')">00</button>
+              <button onclick="window.coKeypad('cash','.')">.</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== БЕЗНАЛИЧНАЯ ===== -->
+      <div class="co-panel" id="co-panel-card">
+        <div class="co-card-select">
+          <div class="co-card-select-title">Выберите способ оплаты</div>
+          <div class="co-card-methods" id="cardMethodsList"><!-- рендерится в checkout.js --></div>
+        </div>
+      </div>
+
+      <!-- ===== СМЕШАННАЯ ===== -->
+      <div class="co-panel" id="co-panel-mixed">
+        <div class="co-mixed-wrap">
+          <div class="co-mixed-rows" id="mixedRows"><!-- рендерится в checkout.js --></div>
+          <div class="co-keypad co-keypad-mixed">
+            <button onclick="window.coKeypad('mixed','1')">1</button>
+            <button onclick="window.coKeypad('mixed','2')">2</button>
+            <button onclick="window.coKeypad('mixed','3')">3</button>
+            <button class="co-key-del" onclick="window.coKeypad('mixed','back')">⌫</button>
+            <button onclick="window.coKeypad('mixed','4')">4</button>
+            <button onclick="window.coKeypad('mixed','5')">5</button>
+            <button onclick="window.coKeypad('mixed','6')">6</button>
+            <button onclick="window.coKeypad('mixed','7')">7</button>
+            <button onclick="window.coKeypad('mixed','8')">8</button>
+            <button onclick="window.coKeypad('mixed','9')">9</button>
+            <button class="co-key-clear" onclick="window.coKeypad('mixed','clear')">C</button>
+            <button onclick="window.coKeypad('mixed','0')">0</button>
+            <button onclick="window.coKeypad('mixed','00')">00</button>
+            <button onclick="window.coKeypad('mixed','.')">.</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== В ДОЛГ ===== -->
+      <div class="co-panel" id="co-panel-debt">
+        <div class="co-calc">
+          <div class="co-amount-box">
+            <input type="text" class="co-amount-input" id="debtAmountInput" value="0" readonly>
+            <span class="co-amount-currency">₸</span>
+          </div>
+          <div class="co-calc-grid">
+            <div class="co-quick-col">
+              <button class="co-noquick" onclick="window.coDebtNoChange()">
+                <span>Без сдачи</span>
+              </button>
+              <div class="co-quick-grid">
+                <button class="co-chip co-chip-blue" onclick="window.coDebtAdd(500)">+500 ₸</button>
+                <button class="co-chip co-chip-yellow" onclick="window.coDebtAdd(1000)">+1 000 ₸</button>
+                <button class="co-chip co-chip-green" onclick="window.coDebtAdd(2000)">+2 000 ₸</button>
+                <button class="co-chip co-chip-red" onclick="window.coDebtAdd(5000)">+5 000 ₸</button>
+                <button class="co-chip co-chip-cyan" onclick="window.coDebtAdd(10000)">+10 000 ₸</button>
+                <button class="co-chip co-chip-purple" onclick="window.coDebtAdd(20000)">+20 000 ₸</button>
+              </div>
+            </div>
+            <div class="co-keypad">
+              <button onclick="window.coKeypad('debt','1')">1</button>
+              <button onclick="window.coKeypad('debt','2')">2</button>
+              <button onclick="window.coKeypad('debt','3')">3</button>
+              <button class="co-key-del" onclick="window.coKeypad('debt','back')">⌫</button>
+              <button onclick="window.coKeypad('debt','4')">4</button>
+              <button onclick="window.coKeypad('debt','5')">5</button>
+              <button onclick="window.coKeypad('debt','6')">6</button>
+              <button onclick="window.coKeypad('debt','7')">7</button>
+              <button onclick="window.coKeypad('debt','8')">8</button>
+              <button onclick="window.coKeypad('debt','9')">9</button>
+              <button class="co-key-clear" onclick="window.coKeypad('debt','clear')">C</button>
+              <button onclick="window.coKeypad('debt','0')">0</button>
+              <button onclick="window.coKeypad('debt','00')">00</button>
+              <button onclick="window.coKeypad('debt','.')">.</button>
+            </div>
+          </div>
+          <div class="co-debt-hint" id="coDebtHint">Покупатель обязателен для продажи в долг</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="co-footer">
+      <div class="co-footer-totals">
+        <div class="co-footer-row co-footer-main">
+          <span>Итого к оплате:</span>
+          <strong id="coTotalAmount">0.00 ₸</strong>
+        </div>
+        <div class="co-footer-row">
+          <span>Внесено:</span>
+          <span id="coPaidAmount">0.00 ₸</span>
+        </div>
+        <div class="co-footer-row">
+          <span>Осталось внести:</span>
+          <span id="coRemainingAmount">0.00 ₸</span>
+        </div>
+        <div class="co-footer-row">
+          <span>Сдача:</span>
+          <span id="coChangeAmount">0.00 ₸</span>
+        </div>
+      </div>
+      <button class="co-confirm-btn" id="checkoutConfirmBtn" onclick="window.confirmCheckoutPayment()">Принять оплату</button>
+    </div>
+  </div>
+
+  <!-- MODAL: выбор/создание покупателя из экрана оплаты -->
+  <div class="modal" id="checkoutCustomerModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Новый покупатель</h3>
+        <button class="modal-close" onclick="closeModal('checkoutCustomerModal')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="label">Поиск по имени и номеру телефона</label>
+          <input type="text" id="coCustSearch" class="input" placeholder="Поиск по имени и номеру телефона" oninput="window.filterCheckoutCustomers()">
+          <div id="coCustResults" class="co-cust-results"></div>
+        </div>
+        <div class="co-cust-divider">Быстрое создание покупателя</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="label">Номер телефона *</label>
+            <input type="tel" id="coCustPhone" class="input" placeholder="+7" value="+7">
+          </div>
+          <div class="form-group">
+            <label class="label">Имя *</label>
+            <input type="text" id="coCustName" class="input" placeholder="Имя">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="label">ИИН/БИН</label>
+          <input type="text" id="coCustIin" class="input" placeholder="ИИН/БИН покупателя">
+        </div>
+        <div class="form-group">
+          <label class="label">Код покупателя</label>
+          <input type="text" id="coCustCode" class="input" placeholder="Код покупателя">
+        </div>
+        <div class="form-group">
+          <label class="label">Комментарий</label>
+          <input type="text" id="coCustComment" class="input" placeholder="Комментарий">
+        </div>
+        <input type="hidden" id="coCustSelectedId">
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('checkoutCustomerModal')">Отмена</button>
+        <button class="btn-primary" onclick="window.saveCheckoutCustomer()">💾 Сохранить и выбрать</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal" id="editProductModal" style="display:none;">
     <div class="modal-content">
       <div class="modal-header">
