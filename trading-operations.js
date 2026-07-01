@@ -946,6 +946,13 @@ window.submitOperation = async function() {
 
     switch(currentTab) {
       case 'sale':
+        // ✅ Вместо мгновенной продажи открываем экран оплаты
+        // (Наличные / Безналичная / Смешанная / В долг) — checkout.js
+        if (window.openCheckout) {
+          window.openCheckout();
+          isProcessingByTab[currentTab] = false;
+          return;
+        }
         result = await submitSale();
         break;
       case 'income':
@@ -975,33 +982,51 @@ function getCurrentTabName() {
 // =============================================
 // ПРОДАЖА (submitSale) - АТОМАРНАЯ через RPC
 // =============================================
-async function submitSale() {
-  console.log("🚀 submitSale START (ATOMIC via RPC)");
-  
+async function submitSale(checkoutPayload) {
+  console.log("🚀 submitSale START (ATOMIC via RPC)", checkoutPayload);
+
   const state = saleState;
 
   if (!state.cart.length) {
     window.showToast('Корзина пуста', 'error');
     return;
   }
-  
-  if (!state.selectedPaymentId) {
-    window.showToast('Выберите способ оплаты', 'error');
+
+  // ✅ Экран оплаты (checkout.js) передаёт разбивку по способам оплаты.
+  // Без checkoutPayload (старое поведение) — используем одиночный selectedPaymentId для совместимости.
+  let payments, primaryPaymentMethod, isDebt = false, debtAmount = 0;
+  let customerId = state.selectedClientId || null;
+
+  if (checkoutPayload) {
+    payments = checkoutPayload.payments || [];
+    primaryPaymentMethod = checkoutPayload.primaryPaymentMethod || null;
+    isDebt = !!checkoutPayload.isDebt;
+    debtAmount = checkoutPayload.debtAmount || 0;
+    if (checkoutPayload.customerId) customerId = checkoutPayload.customerId;
+  } else {
+    if (!state.selectedPaymentId) {
+      window.showToast('Выберите способ оплаты', 'error');
+      return;
+    }
+    primaryPaymentMethod = state.selectedPaymentId;
+  }
+
+  if (isDebt && !customerId) {
+    window.showToast('Для продажи в долг нужно выбрать покупателя', 'error');
     return;
   }
-  
+
   const subtotal = window.calculateTotal();
   const discount = state.discountAmount || 0;
   const total = subtotal - discount;
   const comment = document.getElementById('commentInput')?.value.trim() || null;
-  
+
   const actionBtn = document.getElementById('actionBtn');
-  if (!actionBtn) return;
-  
-  const originalText = actionBtn.textContent;
-  actionBtn.disabled = true;
-  actionBtn.textContent = 'Сохранение...';
-  
+  const checkoutBtn = document.getElementById('checkoutConfirmBtn');
+  const originalText = actionBtn ? actionBtn.textContent : null;
+  if (actionBtn) { actionBtn.disabled = true; actionBtn.textContent = 'Сохранение...'; }
+  if (checkoutBtn) checkoutBtn.disabled = true;
+
   try {
     // Формируем items для RPC (все товары и услуги)
     const items = state.cart.map(item => ({
@@ -1021,13 +1046,16 @@ async function submitSale() {
     const { data, error } = await supabase.rpc('process_sale', {
       p_company_id:        window.COMPANY_ID,
       p_store_location_id: window.STORE_LOCATION_ID,
-      p_payment_method:    state.selectedPaymentId,
+      p_payment_method:    primaryPaymentMethod,
       p_total_amount:      total,
-      p_customer_id:       state.selectedClientId || null,
+      p_customer_id:       customerId,
       p_comment:           comment,
       p_items:             items,
       p_warehouse_id:      null,
-      p_operation_at:      operation_at
+      p_operation_at:      operation_at,
+      p_payments:          payments && payments.length ? payments : null,
+      p_is_debt:           isDebt,
+      p_debt_amount:       debtAmount
     });
     
     if (error) throw error;
@@ -1060,10 +1088,13 @@ console.error('SALE ERROR DETAILS:', err?.details);
 console.error('SALE ERROR HINT:', err?.hint);
 
     window.showToast('❌ Ошибка: ' + (err.message || 'Неизвестная ошибка'), 'error');
+    return null;
   } finally {
     // ✅ ИСПРАВЛЕНИЕ: кнопка всегда разблокируется — даже при неожиданных ошибках
     const btn = document.getElementById('actionBtn');
     if (btn) { btn.disabled = false; btn.textContent = originalText; }
+    const cBtn = document.getElementById('checkoutConfirmBtn');
+    if (cBtn) cBtn.disabled = false;
   }
 }
 
