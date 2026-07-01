@@ -48,13 +48,8 @@ function relocatePosNodes() {
   const clientSlot = document.getElementById('posClientSlot');
   if (clientCard && clientSlot) clientSlot.appendChild(clientCard);
 
-  const bottombar = document.getElementById('posBottombar');
-  const paymentCard = document.getElementById('paymentButtons')?.closest('.card');
-  const totalCard = sectionTrading.querySelector('.total-card');
-  const actionBtn = document.getElementById('actionBtn');
-  if (bottombar && paymentCard) bottombar.appendChild(paymentCard);
-  if (bottombar && totalCard) bottombar.appendChild(totalCard);
-  if (bottombar && actionBtn) bottombar.appendChild(actionBtn);
+  // paymentButtons, total-card, actionBtn stay in .right-panel (display:none in pos.css).
+  // The POS bottombar gets its own lightweight markup via buildPosBottombar().
 
   const mainContent = document.querySelector('.main-content');
   const historyPanel = document.getElementById('posHistoryPanel');
@@ -494,7 +489,66 @@ function wireUniversalProduct() {
 }
 
 // =============================================
-// 7. ОПЛАТА ДОЛГ / СМЕШАННАЯ — real customer debt
+// 7. POS BOTTOMBAR — "К оплате" + 3 payment buttons
+// =============================================
+function buildPosBottombar() {
+  const bar = document.getElementById('posBottombar');
+  if (!bar) return;
+  bar.innerHTML = `
+    <div class="pos-pay-total">
+      <div class="pos-pay-label">К оплате:</div>
+      <div class="pos-pay-amount" id="posPayAmount">0 ₸</div>
+    </div>
+    <div class="pos-pay-btns">
+      <button class="pos-pay-btn pos-pay-cash" id="posPayCash">Наличные</button>
+      <button class="pos-pay-btn pos-pay-card" id="posPayCard">Безналичная</button>
+      <button class="pos-pay-btn pos-pay-debt" id="posPayDebt">Смешанная/Долг</button>
+    </div>
+  `;
+}
+
+function updatePosTotal() {
+  const el = document.getElementById('posPayAmount');
+  if (!el) return;
+  const state = getCurrentState();
+  if (getCurrentTab() !== 'sale') return;
+  const subtotal = state.cart.reduce((s, i) => s + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0);
+  const disc = Number(state.discountAmount) || 0;
+  el.textContent = fmt(Math.max(0, subtotal - disc));
+}
+
+function hookRenderCart() {
+  const orig = window.renderCart;
+  if (!orig || orig.__posHooked) return;
+  window.renderCart = function () {
+    const r = orig.apply(this, arguments);
+    updatePosTotal();
+    return r;
+  };
+  window.renderCart.__posHooked = true;
+}
+
+function wirePayButtons() {
+  function methodByPattern(re) {
+    return (window.PAYMENT_METHODS || []).find(m => re.test(m.name || ''));
+  }
+  async function payWith(re) {
+    if (getCurrentTab() !== 'sale') return;
+    const state = getCurrentState();
+    if (!state.cart.length) { toast('Чек пуст', 'error'); return; }
+    const method = methodByPattern(re);
+    if (!method) { toast('Метод оплаты не найден — обновите страницу', 'error'); return; }
+    saleState.selectedPaymentId = method.id;
+    window.submitOperation && await window.submitOperation();
+    updatePosTotal();
+  }
+  document.getElementById('posPayCash').addEventListener('click', () => payWith(/наличн/i));
+  document.getElementById('posPayCard').addEventListener('click', () => payWith(/безналичн|перевод|карт/i));
+  document.getElementById('posPayDebt').addEventListener('click', () => payWith(/долг|смешан/i));
+}
+
+// =============================================
+// 8. ОПЛАТА ДОЛГ / СМЕШАННАЯ — real customer debt
 // =============================================
 function findDebtMethodId() {
   const methods = window.PAYMENT_METHODS || [];
@@ -574,7 +628,7 @@ function wrapSubmitOperation() {
 }
 
 // =============================================
-// 8. ПЕЧАТЬ ПОСЛЕДНЕГО ЧЕКА
+// 9. ПЕЧАТЬ ПОСЛЕДНЕГО ЧЕКА
 // =============================================
 function printLastReceipt() {
   if (!lastReceipt) { toast('Нет последнего чека для печати', 'error'); return; }
@@ -768,6 +822,7 @@ function wireSearchBar() {
 // =============================================
 function init() {
   relocatePosNodes();
+  buildPosBottombar();
   wireTopTabs();
   wireHistorySearch();
   wireDebtPayoff();
@@ -776,6 +831,7 @@ function init() {
   wireMarkup();
   wireHold();
   wireUniversalProduct();
+  wirePayButtons();
   wireQuickReceive();
   wirePriceCheck();
   wireSwitchStore();
@@ -789,6 +845,8 @@ function init() {
   // parallel) — retry until ready, mirroring script.js's own initTrading().
   function ready() {
     if (typeof window.switchTradingTab === 'function' && typeof window.showSection === 'function') {
+      hookRenderCart();
+      updatePosTotal();
       posSwitchTab('sale');
     } else {
       setTimeout(ready, 30);

@@ -149,7 +149,8 @@ async function init() {
   // если вызвать showSection сразу — window.switchTradingTab может ещё не существовать
   function initTrading() {
     if (typeof window.switchTradingTab === 'function') {
-      showSection('trading');
+      const lastSection = localStorage.getItem('last_section') || 'products';
+      showSection(lastSection);
       console.log('✅ Приложение такканай89 готово');
     } else {
       setTimeout(initTrading, 20);
@@ -1107,6 +1108,9 @@ window.showSection = function(name) {
   }
 
   currentSection = name;
+  if (!document.body.classList.contains('pos-mode')) {
+    try { localStorage.setItem('last_section', name); } catch {}
+  }
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
   
