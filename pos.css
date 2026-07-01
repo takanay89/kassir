@@ -1,0 +1,341 @@
+/* =============================================
+   POS FULLSCREEN MODE ("Режим продаж")
+   Scoped to body.pos-mode. Hides site chrome, repositions
+   .main-content into the space between the new top bar,
+   left icon rail and bottom payment bar.
+   ============================================= */
+
+:root {
+  --pos-topbar-h: 60px;
+  --pos-rail-w: 220px;
+  --pos-rail-w-collapsed: 64px;
+  --pos-bottombar-h: 96px;
+}
+
+body.pos-mode .status-bar,
+body.pos-mode .top-header,
+body.pos-mode .sidebar {
+  display: none !important;
+}
+
+body.pos-mode .main-content {
+  position: fixed;
+  top: var(--pos-topbar-h);
+  left: var(--pos-rail-w);
+  right: 0;
+  bottom: var(--pos-bottombar-h);
+  margin: 0;
+  padding: 16px 20px;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--bg-primary);
+  z-index: 1;
+  transition: left 0.2s ease;
+}
+
+body.pos-mode.pos-rail-collapsed .main-content {
+  left: var(--pos-rail-w-collapsed);
+}
+
+/* Only trading + clients sections are reachable in POS mode */
+body.pos-mode .section:not(#section-trading):not(#section-clients) {
+  display: none !important;
+}
+
+body.pos-mode #section-trading .section-header,
+body.pos-mode #section-trading .trading-tabs {
+  display: none !important;
+}
+
+/* Old two-column grid: left-panel (search + return-finder) gets relocated by
+   pos.js into .pos-receipt-area and stays visible; right-panel is emptied
+   (cart/client/discount/payment/total/action all pulled out of it) and hidden. */
+body.pos-mode #section-trading .trading-grid {
+  display: block;
+}
+body.pos-mode #section-trading .right-panel {
+  display: none !important;
+}
+
+body.pos-mode #section-clients {
+  padding-top: 4px;
+}
+
+/* Hide История/Смена panels until pos.js activates the matching tab */
+body.pos-mode .pos-panel { display: none; }
+body.pos-mode .pos-panel.active { display: block; }
+
+/* ===================== TOP BAR ===================== */
+.pos-shell { position: relative; }
+
+.pos-topbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--pos-topbar-h);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  z-index: 1100;
+}
+
+.pos-topbar-tabs { display: flex; gap: 4px; height: 100%; }
+
+.pos-tab {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 14px;
+  padding: 0 18px;
+  height: 100%;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.15s;
+}
+.pos-tab:hover { color: var(--text-primary); }
+.pos-tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+
+.pos-burger-btn {
+  width: 40px; height: 40px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.pos-burger-btn:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
+
+/* ===================== LEFT ICON RAIL ===================== */
+.pos-rail {
+  position: fixed;
+  top: var(--pos-topbar-h);
+  bottom: var(--pos-bottombar-h);
+  left: 0;
+  width: var(--pos-rail-w);
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 10px 8px;
+  gap: 4px;
+  z-index: 1050;
+  overflow-y: auto;
+  transition: width 0.2s ease;
+}
+body.pos-rail-collapsed .pos-rail { width: var(--pos-rail-w-collapsed); }
+
+.pos-rail-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.pos-rail-btn:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
+.pos-rail-btn.active { background: var(--blue); color: #fff; }
+.pos-rail-btn svg { flex-shrink: 0; }
+body.pos-rail-collapsed .pos-rail-btn span { display: none; }
+
+.pos-rail-spacer { flex: 1; }
+.pos-rail-collapse { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 14px; }
+
+/* ===================== RECEIPT AREA (center) ===================== */
+.pos-receipt-area { display: flex; flex-direction: column; gap: 14px; height: 100%; }
+
+.pos-search-bar {
+  display: flex; align-items: center;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 0 12px;
+}
+
+/* ===================== BOTTOM BAR ===================== */
+.pos-bottombar {
+  position: fixed;
+  bottom: 0; left: var(--pos-rail-w); right: 0;
+  height: var(--pos-bottombar-h);
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 0 20px;
+  z-index: 1050;
+  transition: left 0.2s ease;
+}
+body.pos-rail-collapsed .pos-bottombar { left: var(--pos-rail-w-collapsed); }
+
+.pos-bottombar .total-card {
+  flex-shrink: 0;
+  margin: 0;
+  min-width: 180px;
+}
+.pos-bottombar .payment-buttons {
+  flex: 1;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.pos-bottombar .btn-sell {
+  flex-shrink: 0;
+  min-width: 160px;
+  height: 52px;
+}
+
+/* ===================== FLYOUTS / POPOVERS ===================== */
+.pos-flyout {
+  position: fixed;
+  left: var(--pos-rail-w);
+  bottom: calc(var(--pos-bottombar-h) + 10px);
+  width: 420px;
+  max-height: 70vh;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.35);
+  z-index: 1200;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  transition: left 0.2s ease;
+}
+body.pos-rail-collapsed .pos-flyout { left: var(--pos-rail-w-collapsed); }
+.pos-flyout.open { display: flex; }
+.pos-flyout-small { width: 320px; }
+
+.pos-flyout-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.pos-flyout-head h3 { font-size: 15px; font-weight: 700; }
+.pos-flyout-close {
+  background: none; border: none; color: var(--text-secondary);
+  font-size: 20px; cursor: pointer; line-height: 1;
+}
+.pos-flyout-body { padding: 14px 16px; overflow-y: auto; flex: 1; }
+
+/* ===================== QUICK PRODUCTS ===================== */
+.pos-quick-pins {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.pos-quick-pin-tile {
+  position: relative;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+.pos-quick-pin-tile .pos-pin-toggle {
+  position: absolute; top: 4px; right: 6px;
+  font-size: 14px; cursor: pointer; opacity: 0.6;
+}
+.pos-quick-pin-tile .pos-pin-toggle:hover { opacity: 1; }
+.pos-quick-empty-hint { font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; }
+
+/* ===================== HISTORY / SHIFT PANELS ===================== */
+.pos-panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 16px; }
+.pos-panel-head h2 { font-size: 22px; font-weight: 800; }
+.pos-panel-head .input { max-width: 320px; }
+
+.pos-shift-stats { display: flex; gap: 16px; flex-wrap: wrap; }
+.pos-shift-stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px 24px;
+  min-width: 180px;
+}
+.pos-shift-stat-card .pos-stat-label { font-size: 12px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.pos-shift-stat-card .pos-stat-value { font-size: 26px; font-weight: 800; margin-top: 6px; }
+
+.pos-history-list, .pos-hold-list, .pos-quick-receive-list {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.pos-history-row, .pos-hold-row, .pos-quick-receive-row {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.pos-history-row:hover, .pos-hold-row:hover, .pos-quick-receive-row:hover { border-color: var(--blue); }
+
+.pos-price-check-result {
+  margin-top: 12px;
+}
+.pos-price-check-result .pos-price-row {
+  display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border);
+}
+
+/* ===================== HAMBURGER DRAWER ===================== */
+.pos-drawer-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 1300;
+  display: none;
+}
+.pos-drawer-overlay.open { display: block; }
+
+.pos-drawer {
+  position: fixed;
+  top: 0; right: -340px;
+  width: 320px; height: 100%;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border);
+  z-index: 1301;
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 20px;
+  transition: right 0.2s ease;
+}
+.pos-drawer.open { right: 0; }
+
+.pos-drawer-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.pos-drawer-section { padding: 14px 10px 6px; }
+.pos-drawer-section-title {
+  font-size: 11px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--text-tertiary, var(--text-secondary));
+  padding: 0 10px 8px;
+}
+.pos-drawer-item {
+  display: block; width: 100%; text-align: left;
+  background: none; border: none;
+  color: var(--text-primary);
+  font-size: 14px; font-weight: 500;
+  padding: 12px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.pos-drawer-item:hover { background: rgba(255,255,255,0.06); }
+.pos-drawer-item-danger { color: var(--red); }
+
+@media (max-width: 900px) {
+  .pos-flyout { width: calc(100vw - 40px); left: 20px !important; }
+}

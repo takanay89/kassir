@@ -940,12 +940,13 @@ window.submitOperation = async function() {
     return;
   }
   
+  let result;
   try {
     isProcessingByTab[currentTab] = true;
-    
+
     switch(currentTab) {
       case 'sale':
-        await submitSale();
+        result = await submitSale();
         break;
       case 'income':
         await submitIncome();
@@ -963,6 +964,7 @@ window.submitOperation = async function() {
   } finally {
     isProcessingByTab[currentTab] = false;
   }
+  return result;
 };
 
 function getCurrentTabName() {
@@ -1039,16 +1041,18 @@ async function submitSale() {
     
     // Успех!
     showSuccessModal(total, state.cart.length);
-    
+
     window.resetCart();
     await loadSalesStats();
     await refreshProductsCache();
-    
+
     // ✅ ИСПРАВЛЕНИЕ: перерисовываем список товаров после обновления кеша
     if (window.renderProductsList) {
       window.renderProductsList();
     }
-    
+
+    return { saleId: data[0].sale_id, total };
+
   } catch (err) {
     console.error('SALE ERROR FULL:', err);
 console.error('SALE ERROR MESSAGE:', err?.message);
